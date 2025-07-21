@@ -26,20 +26,23 @@ SAVE_SLOT_QUANTITY = 5
 
 
 # Assumes that input will be a SINGLE LETTER
-def validate_input(message: str, regex: str) -> str: # need to typecast in main code when working outside of strings
+def validate_input(message: str, regex: str) -> str:
+    '''Uses a regular expression to validate input. Takes in a prompt and a regex.'''
+    # need to typecast in main code when working outside of strings
     while True:
         user_input = input(message).lower()
         if re.match(regex, user_input):
             return user_input
         elif user_input == "":
-            print(f"Please enter a valid input instead of nothing.")
+            print("Please enter a valid input instead of nothing.")
         else:
             print(f"{user_input} is invalid. Please enter a valid input.")
 
 
 # This function loads a map structure (a nested list) from a file
 # It also updates MAP_WIDTH and MAP_HEIGHT
-def load_map(filename: str, map_struct: list = game_map) -> None: # idk what is map_struct; will asssign it some default value
+def load_map(filename: str, map_struct: list = game_map) -> None:
+    # idk what is map_struct; will asssign it some default value
     '''
     Loads a map structure (a nested list) from a file.
     It also updates MAP_WIDTH and MAP_HEIGHT'''
@@ -50,7 +53,6 @@ def load_map(filename: str, map_struct: list = game_map) -> None: # idk what is 
     
     map_struct.clear() # not sure what this is for
     
-    # TODO: Add your map loading code here DONE ✓
     lines = map_file.read().split("\n")
     for line in lines:
         line = list(line)
@@ -69,7 +71,12 @@ def clear_fog(fog, player: dict):
     return
 
 
-def checking_save_slots(mode: str):
+def checking_save_slots(mode: str) -> tuple[str, list]:
+    '''
+    Returns
+    1. the text that lists whether a save slot is empty or has data already written to it
+    2. a list of save slots that has data already written to it
+    '''
     if mode == "save":
         save_slot_listing_text = "Select a save slot to save to.\n"
     elif mode == "load":
@@ -103,14 +110,16 @@ def choose_new_save_slot() -> int:
     regex = separator.join(list("12345")) # HARD CODED !!!!
     regex = f"^[{regex}]$"
     regex = r"{}".format(regex)
-    
+
     print(save_slot_listing_text)
-    
+
     # Asking user for desired save slot choice
     while True:
         save_slot_choice = int(validate_input("Your choice? ", regex))
         if save_slot_choice in save_slots_written_already:
-            confirmation_choice = validate_input(f"Are you sure? This will overwrite save slot {save_slot_choice}. Your choice (y/n)? ", r"^[y|n]$")
+            confirmation_choice = validate_input(f"Are you sure? This will overwrite save \
+                                                 slot {save_slot_choice}. \
+                                                 Your choice (y/n)? ", r"^[y|n]$")
             if confirmation_choice == "n":
                 print(f"You chose not to overwrite save slot {save_slot_choice}")
                 continue
@@ -119,7 +128,9 @@ def choose_new_save_slot() -> int:
     return save_slot_choice
 
 
-def initialize_game(game_map: list = game_map, fog = [], player: dict = player) -> None: # default values    
+def initialize_game(game_map: list = game_map, fog = [], \
+                    player: dict = player) -> None: # default values
+    '''Initiliases map, fog and player information'''
     save_slot_choice = choose_new_save_slot()
     name = validate_input("Greetings, miner! What is your name? ", r"^.+$")
 
@@ -170,13 +181,14 @@ def show_information(player):
 
 
 # This function saves the game
-def save_game(game_map: list = game_map, fog = [], player: dict = player, save_slot_number: int = current_save_slot) -> None: # default values
+def save_game(game_map: list = game_map, fog = [], player: dict = player,\
+               save_slot_number: int = current_save_slot) -> None: # default values
     '''This function saves the game'''
-    primary_directory_name = f"saves/save_slot_{save_slot_number}"
+    directory_name = f"saves/save_slot_{save_slot_number}"
 
     # save map
     # Saving map list
-    save_file_map = open(f"{primary_directory_name}/save_{save_slot_number}_map.txt", "w")
+    save_file_map = open(f"{directory_name}/save_{save_slot_number}_map.txt", "w")
     text_to_write = ""
     for row in game_map:
         for element in row:
@@ -190,10 +202,11 @@ def save_game(game_map: list = game_map, fog = [], player: dict = player, save_s
 
     # save player
     # Saving str and int
-    save_file_player = open(f"{primary_directory_name}/save_{save_slot_number}_player.txt", "w")
+    save_file_player = open(f"{directory_name}/save_{save_slot_number}_player.txt", "w")
     text_to_write = ""
     for key in player.keys():
-        if type(player[key]) == str or type(player[key]) == int:
+        if isinstance(player[key], (int, float, str)):
+        # if type(player[key]) == str or type(player[key]) == int or type(player[key]) == float:
             text_to_write += f"{key},{player[key]}\n"
     text_to_write = text_to_write[:len(text_to_write)-1]
     save_file_player.write(text_to_write)
@@ -204,20 +217,21 @@ def save_game(game_map: list = game_map, fog = [], player: dict = player, save_s
 
 
 # This function loads the game
-def load_game(game_map: list = game_map, fog = [], player: dict = player, save_slot_number: int = current_save_slot) -> bool: # default values
+def load_game(game_map: list = game_map, fog = [], player: dict = player, \
+              save_slot_number: int = current_save_slot) -> bool: # default values
     '''This function loads the game'''
-    primary_directory_name = f"saves/save_slot_{save_slot_number}"
+    directory_name = f"saves/save_slot_{save_slot_number}"
 
     try:
         # load map
-        load_map(f"{primary_directory_name}/save_{save_slot_number}_map.txt")
+        load_map(f"{directory_name}/save_{save_slot_number}_map.txt")
         # print(f"game_map: {game_map}")
 
         # TODO load fog
 
         # load player
         player.clear()
-        save_file_player = open(f"{primary_directory_name}/save_{save_slot_number}_player.txt", "r")
+        save_file_player = open(f"{directory_name}/save_{save_slot_number}_player.txt", "r")
         data = save_file_player.read()
         data = data.split("\n")
         for datum in data: # extracting data from save slot
@@ -240,6 +254,7 @@ def load_game(game_map: list = game_map, fog = [], player: dict = player, save_s
 
 
 def show_main_menu() -> None:
+    '''Shows main menu'''
     print()
     print("--- Main Menu ----")
     print("(N)ew game")
@@ -249,7 +264,8 @@ def show_main_menu() -> None:
     print("------------------")
 
 
-def show_town_menu() ->None:
+def show_town_menu() -> None:
+    '''Shows town menu'''
     print()
     # TODO: Show Day
     print("----- Sundrop Town -----")
@@ -262,17 +278,19 @@ def show_town_menu() ->None:
     print("------------------------")
 
 
-def show_shop_menu(GP: int) -> None:
+def show_shop_menu(gp: int) -> None:
+    '''Shows shop menu'''
     print("----------------------- Shop Menu -------------------------")
     print("(P)ickaxe upgrade to Level {} to mine {} ore for {} GP")
     print("(B)ackpack upgrade to carry {} items for {} GP")
     print("(L)eave shop")
     print("-----------------------------------------------------------")
-    print(f"GP: {GP}")
+    print(f"GP: {gp}")
     print("-----------------------------------------------------------")
 
 
 def main_menu() -> bool: # Return value specifies whether to break out of MAIN LOOP
+    '''Main loop'''
     while True:
         show_main_menu()
         main_menu_choice = validate_input("Your choice? ",r"^[n|l|q]$")
@@ -299,14 +317,14 @@ def main_menu() -> bool: # Return value specifies whether to break out of MAIN L
                 loaded_success = load_game(save_slot_number=save_slot_choice)
                 if not loaded_success:
                     continue
-                else:
-                    return True
+                return True
         elif main_menu_choice == "q":
             return False
             # break
 
 
 def town_menu() -> bool:
+    '''Simulates the interaction of town menu'''
     while True:
         show_town_menu()
         town_menu_choice = validate_input("Your choice? ", r"^[b|i|m|e|v|q]$")
@@ -329,12 +347,12 @@ def town_menu() -> bool:
 
 # Creating the save slot folders. Ensures they exist in working dir.
 # Source: https://www.geeksforgeeks.org/python/create-a-directory-in-python/
-primary_directory_name = "saves"
+PRIMARY_DIRECTORY_NAME = "saves"
 
 for i in range(1,SAVE_SLOT_QUANTITY+1):
-    full_dir_path = f"{primary_directory_name}/save_slot_{i}"
+    FULL_DIR_PATH = f"{PRIMARY_DIRECTORY_NAME}/save_slot_{i}"
     try: # The exceptions are only for debugging
-        os.mkdir(full_dir_path)
+        os.mkdir(FULL_DIR_PATH)
         # print(f"Directory '{directory_name}' created successfully.")
     except FileExistsError:
         #print(f"Directory '{full_dir_path}' already exists.")
