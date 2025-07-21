@@ -24,6 +24,7 @@ prices['gold'] = (10, 18)
 current_save_slot = 1
 SAVE_SLOT_QUANTITY = 5
 
+
 # Assumes that input will be a SINGLE LETTER
 def validate_input(message: str, regex: str) -> str: # need to typecast in main code when working outside of strings
     while True:
@@ -61,6 +62,7 @@ def load_map(filename: str, map_struct: list = game_map) -> None: # idk what is 
     map_file.close()
     # return
 
+
 # This function clears the fog of war at the 3x3 square around the player
 def clear_fog(fog, player: dict):
     '''This function clears the fog of war at the 3x3 square around the player'''
@@ -88,6 +90,7 @@ def checking_save_slots(mode: str):
                 save_slot_listing_text += f"Slot {i}: EMPTY ; No files in save folder\n"
     
     return save_slot_listing_text, save_slots_written_already
+
 
 def choose_new_save_slot() -> int:
     '''Allows choosing of save slot to begin a NEW game.'''
@@ -147,20 +150,24 @@ def initialize_game(game_map: list = game_map, fog = [], player: dict = player) 
     save_game(save_slot_number=save_slot_choice)
     print(f"Pleased to meet you, {name}. Welcome to Sundrop Town!")
 
+
 # This function draws the entire map, covered by the fog
 def draw_map(game_map, fog, player):
     '''This function draws the entire map, covered by the fog'''
     return
+
 
 # This function draws the 3x3 viewport
 def draw_view(game_map, fog, player):
     '''This function draws the 3x3 viewport'''
     return
 
+
 # This function shows the information for the player
 def show_information(player):
     '''This function shows the information for the player'''
     return
+
 
 # This function saves the game
 def save_game(game_map: list = game_map, fog = [], player: dict = player, save_slot_number: int = current_save_slot) -> None: # default values
@@ -194,7 +201,8 @@ def save_game(game_map: list = game_map, fog = [], player: dict = player, save_s
 
     print(f"Saved to save slot {save_slot_number}")
     # return
-        
+
+
 # This function loads the game
 def load_game(game_map: list = game_map, fog = [], player: dict = player, save_slot_number: int = current_save_slot) -> bool: # default values
     '''This function loads the game'''
@@ -230,6 +238,7 @@ def load_game(game_map: list = game_map, fog = [], player: dict = player, save_s
         return False
     # print(player)
 
+
 def show_main_menu() -> None:
     print()
     print("--- Main Menu ----")
@@ -238,6 +247,7 @@ def show_main_menu() -> None:
     # print("(H)igh scores")
     print("(Q)uit")
     print("------------------")
+
 
 def show_town_menu() ->None:
     print()
@@ -261,36 +271,6 @@ def show_shop_menu(GP: int) -> None:
     print(f"GP: {GP}")
     print("-----------------------------------------------------------")
 
-
-#--------------------------- MAIN GAME ---------------------------
-game_state = 'main'
-print("---------------- Welcome to Sundrop Caves! ----------------")
-print("You spent all your money to get the deed to a mine, a small")
-print("  backpack, a simple pickaxe and a magical portal stone.")
-print()
-print("How quickly can you get the 1000 GP you need to retire")
-print("  and live happily ever after?")
-print("-----------------------------------------------------------")
-
-# THE GAME
-
-# Creating the save slot folders. Ensures they exist in working dir.
-# Source: https://www.geeksforgeeks.org/python/create-a-directory-in-python/
-primary_directory_name = "saves"
-
-for i in range(1,SAVE_SLOT_QUANTITY+1):
-    full_dir_path = f"{primary_directory_name}/save_slot_{i}"
-    try: # The exceptions are only for debugging
-        os.mkdir(full_dir_path)
-        # print(f"Directory '{directory_name}' created successfully.")
-    except FileExistsError:
-        #print(f"Directory '{full_dir_path}' already exists.")
-        pass
-    except PermissionError:
-        #print(f"Permission denied: Unable to create '{full_dir_path}'.")
-        pass
-    except Exception as e:
-        print(f"An error occurred: {e}")
 
 def main_menu() -> bool: # Return value specifies whether to break out of MAIN LOOP
     while True:
@@ -326,19 +306,6 @@ def main_menu() -> bool: # Return value specifies whether to break out of MAIN L
             # break
 
 
-def show_town_menu() -> None:
-    print()
-    # TODO: Show Day
-    print("----- Sundrop Town -----")
-    print("(B)uy stuff")
-    print("See Player (I)nformation")
-    print("See Mine (M)ap")
-    print("(E)nter mine")
-    print("Sa(V)e game")
-    print("(Q)uit to main menu")
-    print("------------------------")
-
-
 def town_menu() -> bool:
     while True:
         show_town_menu()
@@ -359,6 +326,35 @@ def town_menu() -> bool:
         else:
             return True
 
+
+# Creating the save slot folders. Ensures they exist in working dir.
+# Source: https://www.geeksforgeeks.org/python/create-a-directory-in-python/
+primary_directory_name = "saves"
+
+for i in range(1,SAVE_SLOT_QUANTITY+1):
+    full_dir_path = f"{primary_directory_name}/save_slot_{i}"
+    try: # The exceptions are only for debugging
+        os.mkdir(full_dir_path)
+        # print(f"Directory '{directory_name}' created successfully.")
+    except FileExistsError:
+        #print(f"Directory '{full_dir_path}' already exists.")
+        pass
+    except PermissionError:
+        #print(f"Permission denied: Unable to create '{full_dir_path}'.")
+        pass
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+
+#--------------------------- MAIN GAME ---------------------------
+game_state = 'main'
+print("---------------- Welcome to Sundrop Caves! ----------------")
+print("You spent all your money to get the deed to a mine, a small")
+print("  backpack, a simple pickaxe and a magical portal stone.")
+print()
+print("How quickly can you get the 1000 GP you need to retire")
+print("  and live happily ever after?")
+print("-----------------------------------------------------------")
 
 while True: # MAIN LOOP
     main_menu_continue_flag = main_menu() # TRUE = CONTINUE
