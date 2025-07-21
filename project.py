@@ -2,7 +2,7 @@ from random import randint
 import os
 import re
 
-player = {} # : {key: value, key, value}
+player = {}
 game_map = []
 fog = []
 
@@ -23,6 +23,18 @@ prices['gold'] = (10, 18)
 
 current_save_slot = 1
 SAVE_SLOT_QUANTITY = 5
+
+# Assumes that input will be a SINGLE LETTER
+def validate_input(message: str, regex: str) -> str: # need to typecast in main code when working outside of strings
+    while True:
+        user_input = input(message).lower()
+        if re.match(regex, user_input):
+            return user_input
+        elif user_input == "":
+            print(f"Please enter a valid input instead of nothing.")
+        else:
+            print(f"{user_input} is invalid. Please enter a valid input.")
+
 
 # This function loads a map structure (a nested list) from a file
 # It also updates MAP_WIDTH and MAP_HEIGHT
@@ -54,27 +66,13 @@ def clear_fog(fog, player: dict):
     '''This function clears the fog of war at the 3x3 square around the player'''
     return
 
-def initialize_game(game_map: list = game_map, fog = [], player: dict = player) -> None: # default values
-    # Creating the save directory (ensures save directory exists in working directory)
-    # Source: https://www.geeksforgeeks.org/python/create-a-directory-in-python/
-    primary_directory_name = "saves"
+
+def checking_save_slots(mode: str):
+    if mode == "save":
+        save_slot_listing_text = "Select a save slot to save to.\n"
+    elif mode == "load":
+        save_slot_listing_text = "Select a save slot to load from.\n"
     
-    for i in range(1,SAVE_SLOT_QUANTITY+1):
-        full_dir_path = f"{primary_directory_name}/save_slot_{i}"
-        try: # The exceptions are only for debugging
-            os.mkdir(full_dir_path)
-            # print(f"Directory '{directory_name}' created successfully.")
-        except FileExistsError:
-            #print(f"Directory '{full_dir_path}' already exists.")
-            pass
-        except PermissionError:
-            #print(f"Permission denied: Unable to create '{full_dir_path}'.")
-            pass
-        except Exception as e:
-            print(f"An error occurred: {e}")
-    
-    # Choosing a save slot to save
-    save_slot_listing_text = "Select a save slot to save to.\n"
     save_slots_written_already = []
     for i in range(1,SAVE_SLOT_QUANTITY+1):
         try:
@@ -84,18 +82,28 @@ def initialize_game(game_map: list = game_map, fog = [], player: dict = player) 
             continue
         else:
             if len(dir) != 0:
-                save_slot_listing_text += f"Slot {i}: HAS BEEN WRITTEN TO\n"
                 save_slots_written_already.append(i)
+                save_slot_listing_text += f"Slot {i}: HAS BEEN WRITTEN TO\n"
             else:
                 save_slot_listing_text += f"Slot {i}: EMPTY ; No files in save folder\n"
     
+    return save_slot_listing_text, save_slots_written_already
+
+def choose_new_save_slot() -> int:
+    '''Allows choosing of save slot to begin a NEW game.'''
+
+    # Checking every safe slot directory
+    save_slot_listing_text, save_slots_written_already = checking_save_slots(mode="save")
+    
+    # Creating regex for input validation based on number of save slots.
     separator = "|"
-    file_quantity_in_all_save_dirs = "12345" # HARD CODED !!!!
-    regex = separator.join(list(file_quantity_in_all_save_dirs))
+    regex = separator.join(list("12345")) # HARD CODED !!!!
     regex = f"^[{regex}]$"
     regex = r"{}".format(regex)
     
     print(save_slot_listing_text)
+    
+    # Asking user for desired save slot choice
     while True:
         save_slot_choice = int(validate_input("Your choice? ", regex))
         if save_slot_choice in save_slots_written_already:
@@ -105,9 +113,14 @@ def initialize_game(game_map: list = game_map, fog = [], player: dict = player) 
                 continue
         break
 
+    return save_slot_choice
+
+
+def initialize_game(game_map: list = game_map, fog = [], player: dict = player) -> None: # default values    
+    save_slot_choice = choose_new_save_slot()
     name = validate_input("Greetings, miner! What is your name? ", r"^.+$")
 
-    # initialize map
+    # initialise map
     try:
         load_map("level1.txt")
     except FileNotFoundError:
@@ -128,7 +141,8 @@ def initialize_game(game_map: list = game_map, fog = [], player: dict = player) 
     player['steps'] = 0
     player['turns'] = TURNS_PER_DAY
 
-    # clear_fog(fog, player) TODO
+    # TODO
+    # clear_fog(fog, player)
 
     save_game(save_slot_number=save_slot_choice)
     print(f"Pleased to meet you, {name}. Welcome to Sundrop Town!")
@@ -191,30 +205,30 @@ def load_game(game_map: list = game_map, fog = [], player: dict = player, save_s
         load_map(f"{primary_directory_name}/save_{save_slot_number}_map.txt")
         # print(f"game_map: {game_map}")
 
-        # load fog
+        # TODO load fog
 
         # load player
         player.clear()
         save_file_player = open(f"{primary_directory_name}/save_{save_slot_number}_player.txt", "r")
         data = save_file_player.read()
         data = data.split("\n")
-        for datum in data:
+        for datum in data: # extracting data from save slot
             datum = datum.split(",")
-            try:
+            try: # typecasting strings into floats and integers
                 if "." in datum[1]:
                     datum[1] = float(datum[1])
                 else:
                     datum[1] = int(datum[1])
                 player[datum[0]] = datum[1]
-            except ValueError:
+            except ValueError: # for strings
                 player[datum[0]] = datum[1]
         save_file_player.close()
+
         return True
     except FileNotFoundError:
         print("There is not a saved game. Please start a new game.")
         return False
     # print(player)
-    # return
 
 def show_main_menu() -> None:
     print()
@@ -248,17 +262,6 @@ def show_shop_menu(GP: int) -> None:
     print("-----------------------------------------------------------")
 
 
-def validate_input(message: str, regex: str) -> str: # need to typecast in main code when working outside of strings
-    while True:
-        user_input = input(message).lower()
-        if re.match(regex, user_input):
-            return user_input
-        elif user_input == "":
-            print(f"Please enter a valid input instead of nothing.")
-        else:
-            print(f"{user_input} is invalid. Please enter a valid input.")
-
-
 #--------------------------- MAIN GAME ---------------------------
 game_state = 'main'
 print("---------------- Welcome to Sundrop Caves! ----------------")
@@ -269,56 +272,102 @@ print("How quickly can you get the 1000 GP you need to retire")
 print("  and live happily ever after?")
 print("-----------------------------------------------------------")
 
-# The game
-while True:
-    show_main_menu()
-    main_menu_choice = validate_input("Your choice? ",r"^[n|l|q]$")
+# THE GAME
 
-    if main_menu_choice == "n":
-        initialize_game()
-        load_game()
-    elif main_menu_choice == "l":
-        save_slot_listing_text = "Select a save slot to load from.\n"
-        file_quantity_in_all_save_dirs = ""
-        for i in range(1,SAVE_SLOT_QUANTITY+1):
-            try:
-                dir = os.listdir(f"saves/save_slot_{i}")
-            except FileNotFoundError:
-                save_slot_listing_text += f"Slot {i}: EMPTY ; FileNotFoundError\n"
+# Creating the save slot folders. Ensures they exist in working dir.
+# Source: https://www.geeksforgeeks.org/python/create-a-directory-in-python/
+primary_directory_name = "saves"
+
+for i in range(1,SAVE_SLOT_QUANTITY+1):
+    full_dir_path = f"{primary_directory_name}/save_slot_{i}"
+    try: # The exceptions are only for debugging
+        os.mkdir(full_dir_path)
+        # print(f"Directory '{directory_name}' created successfully.")
+    except FileExistsError:
+        #print(f"Directory '{full_dir_path}' already exists.")
+        pass
+    except PermissionError:
+        #print(f"Permission denied: Unable to create '{full_dir_path}'.")
+        pass
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+def main_menu() -> bool: # Return value specifies whether to break out of MAIN LOOP
+    while True:
+        show_main_menu()
+        main_menu_choice = validate_input("Your choice? ",r"^[n|l|q]$")
+
+        if main_menu_choice == "n":
+            initialize_game()
+            load_game()
+            return True
+            # break
+        elif main_menu_choice == "l":
+            save_slot_listing_text, save_slots_written_already = checking_save_slots(mode="load")
+            if len(save_slots_written_already) == 0:
+                print("There has not been a save slot written to. Please create a new save slot.")
                 continue
             else:
-                if len(dir) != 0:
-                    file_quantity_in_all_save_dirs += str(i)
-                    save_slot_listing_text += f"Slot {i}: HAS BEEN WRITTEN TO\n"
-                else:
-                    save_slot_listing_text += f"Slot {i}: EMPTY ; No files in save folder\n"
-        if len(file_quantity_in_all_save_dirs) == 0:
-            print("There has not been a save slot written to. Please create a new save slot.")
-            continue
-        else:
-            print(save_slot_listing_text)
-            separator = "|"
-            regex = separator.join(list(file_quantity_in_all_save_dirs))
-            regex = f"^[{regex}]$"
-            regex = r"{}".format(regex)
+                print(save_slot_listing_text)
+                separator = "|"
+                save_slots_written_already = [str(n) for n in save_slots_written_already]
+                regex = separator.join(save_slots_written_already)
+                regex = f"^[{regex}]$"
+                regex = r"{}".format(regex)
 
-            save_slot_choice = int(validate_input("Your choice? ", regex))
-            loaded_success = load_game(save_slot_number=save_slot_choice)
-            if not loaded_success:
-                continue
-    elif main_menu_choice == "q":
+                save_slot_choice = int(validate_input("Your choice? ", regex))
+                loaded_success = load_game(save_slot_number=save_slot_choice)
+                if not loaded_success:
+                    continue
+                else:
+                    return True
+        elif main_menu_choice == "q":
+            return False
+            # break
+
+
+def show_town_menu() -> None:
+    print()
+    # TODO: Show Day
+    print("----- Sundrop Town -----")
+    print("(B)uy stuff")
+    print("See Player (I)nformation")
+    print("See Mine (M)ap")
+    print("(E)nter mine")
+    print("Sa(V)e game")
+    print("(Q)uit to main menu")
+    print("------------------------")
+
+
+def town_menu() -> bool:
+    while True:
+        show_town_menu()
+        town_menu_choice = validate_input("Your choice? ", r"^[b|i|m|e|v|q]$")
+
+        if town_menu_choice == "b": # (B)uy stuff
+            # show_shop_menu() # Need to include input for current pickaxe level
+            shop_menu_choice = validate_input("Your choice? ", r"^[p|b|l]$")
+            # TODO purchasing mechanic
+        elif town_menu_choice == "i":
+            pass
+        elif town_menu_choice == "m":
+            pass
+        elif town_menu_choice == "e":
+            pass
+        elif town_menu_choice == "v":
+            save_game()
+        else:
+            return True
+
+
+while True: # MAIN LOOP
+    main_menu_continue_flag = main_menu() # TRUE = CONTINUE
+    if not main_menu_continue_flag:
         break
     
-    show_town_menu()
-    town_menu_choice = validate_input("Your choice? ", r"^[b|i|m|e|v|q]$")
-    
-    # DON'T TOUCH BELOW YET (DEAL WITH SAVING MECHANIC FIRST and DATA)
-    if town_menu_choice == "b": # (B)uy stuff
-        show_shop_menu() # Need to include input for current pickaxe level
-        shop_menu_choice = validate_input("Your choice? ", r"^[p|b|l]$")
-        # purchasing mechanic
-    elif town_menu_choice == "v":
-        save_game()
+    town_menu_continue_flag = town_menu() # TRUE = BREAK; FALSE = CONTINUE
+    if not town_menu_continue_flag:
+        break
     
 
 print("Thanks for playing")

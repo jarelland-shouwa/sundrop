@@ -1,4 +1,4 @@
-name,jarell
+name,yes
 x,0
 y,0
 copper,0
