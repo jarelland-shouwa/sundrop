@@ -1,0 +1,10 @@
+name,jad
+x,0
+y,0
+copper,0
+silver,0
+gold,0
+GP,0
+day,0
+steps,0
+turns,20
