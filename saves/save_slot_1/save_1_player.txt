@@ -1,11 +1,11 @@
-name,geo
+name,b
 x,0
 y,0
 copper,0
 silver,0
 gold,0
 GP,0
-day,0
+day,1
 steps,0
 turns,20
-day_num,1
+capacity,10
