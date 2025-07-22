@@ -41,34 +41,6 @@ def validate_input(message: str, regex: str) -> str:
 
 # This function loads a map structure (a nested list) from a file
 # It also updates MAP_WIDTH and MAP_HEIGHT
-def load_map(filename: str, map_struct: list) -> None: # map_struct is probably saying which
-    # variable to edit
-    '''
-    Loads a map structure (a nested list) from a file.
-    It also updates MAP_WIDTH and MAP_HEIGHT'''
-    
-    map_file = open(filename, 'r')
-    global MAP_WIDTH
-    global MAP_HEIGHT
-    
-    map_struct.clear() # not sure what this is for
-    
-    lines = map_file.read().split("\n")
-    for line in lines:
-        line = list(line)
-        map_struct.append(line)
-
-    MAP_WIDTH = len(map_struct[0])
-    MAP_HEIGHT = len(map_struct)
-
-    map_file.close()
-    # return
-
-
-# This function clears the fog of war at the 3x3 square around the player
-def clear_fog(fog, player: dict):
-    '''This function clears the fog of war at the 3x3 square around the player'''
-    return
 
 
 def checking_save_slots(mode: str) -> tuple[str, list]:
@@ -77,24 +49,27 @@ def checking_save_slots(mode: str) -> tuple[str, list]:
     1. the text that lists whether a save slot is empty or has data already written to it
     2. a list of save slots that has data already written to it
     '''
+    written_colour, empty_colour = 91, 92
     if mode == "save":
         save_slot_listing_text = "Select a save slot to save to.\n"
     elif mode == "load":
         save_slot_listing_text = "Select a save slot to load from.\n"
+        written_colour = 92
+        empty_colour = 91
 
     save_slots_written_already = []
     for i in range(1,SAVE_SLOT_QUANTITY+1):
         try:
             directory = os.listdir(f"saves/save_slot_{i}")
         except FileNotFoundError:
-            save_slot_listing_text += f"Slot {i}: EMPTY ; FileNotFoundError\n"
-            continue
+            # save_slot_listing_text += f"Slot {i}: EMPTY ; FileNotFoundError; Please check that this folder has been created.\n"
+            save_slot_listing_text += f"\033[91m{f"Slot {i}: EMPTY ; FileNotFoundError; Please check that this folder has been created.\n"}\033[00m"
         else:
             if len(directory) != 0:
                 save_slots_written_already.append(i)
-                save_slot_listing_text += f"Slot {i}: HAS BEEN WRITTEN TO\n"
+                save_slot_listing_text += f"\033[{written_colour}m{f"Slot {i}: HAS BEEN WRITTEN TO\n"}\033[00m"
             else:
-                save_slot_listing_text += f"Slot {i}: EMPTY ; No files in save folder\n"
+                save_slot_listing_text += f"\033[{empty_colour}m{f"Slot {i}: EMPTY ; No files in save folder\n"}\033[00m"
     
     return save_slot_listing_text, save_slots_written_already
 
@@ -104,7 +79,7 @@ def choose_new_save_slot() -> int:
 
     # Checking every safe slot directory
     save_slot_listing_text, save_slots_written_already = checking_save_slots(mode="save")
-    
+
     # Creating regex for input validation based on number of save slots.
     separator = "|"
     regex = separator.join(list("12345")) # HARD CODED !!!!
@@ -126,6 +101,36 @@ def choose_new_save_slot() -> int:
         break
 
     return save_slot_choice
+
+
+def load_map(filename: str, map_struct: list) -> None: # map_struct is probably saying which variable to save to
+    # variable to edit
+    '''
+    Loads a map structure (a nested list) from a file.
+    It also updates MAP_WIDTH and MAP_HEIGHT'''
+
+    map_file = open(filename, 'r')
+    global MAP_WIDTH
+    global MAP_HEIGHT
+
+    map_struct.clear() # not sure what this is for
+
+    lines = map_file.read().split("\n")
+    for line in lines:
+        line = list(line)
+        map_struct.append(line)
+
+    MAP_WIDTH = len(map_struct[0])
+    MAP_HEIGHT = len(map_struct)
+
+    map_file.close()
+    # return
+
+
+# This function clears the fog of war at the 3x3 square around the player
+def clear_fog(fog, player: dict):
+    '''This function clears the fog of war at the 3x3 square around the player'''
+    return
 
 
 def initialize_game() -> None: # default values
@@ -158,6 +163,8 @@ def initialize_game() -> None: # default values
     player['steps'] = 0
     player['turns'] = TURNS_PER_DAY
 
+    player['day_num'] = 1
+
     # TODO
     # clear_fog(fog, player)
 
@@ -168,18 +175,28 @@ def initialize_game() -> None: # default values
 # This function draws the entire map, covered by the fog
 def draw_map(game_map, fog, player):
     '''This function draws the entire map, covered by the fog'''
+    print(game_map)
+
+    print(f"+{"-"*MAP_WIDTH}+")
+    for row in game_map:
+        row_text = ""
+        for cell in row:
+            row_text += cell
+        print(f"|{row_text}|")
+    print(f"+{"-"*MAP_WIDTH}+")
     return
 
 
 # This function draws the 3x3 viewport
 def draw_view(game_map, fog, player):
     '''This function draws the 3x3 viewport'''
-    return
-
-
-# This function shows the information for the player
-def show_information(player):
-    '''This function shows the information for the player'''
+    print("+---+")
+    for row in fog:
+        row_text = ""
+        for cell in row:
+            row_text += cell
+        print(f"|{row_text}|")
+    print("+---+")
     return
 
 
@@ -256,6 +273,22 @@ def load_game(save_slot_number: int = current_save_slot) -> bool: # default valu
     # print(player)
 
 
+# This function shows the information for the player
+def show_information(): # player argument
+    '''This function shows the information for the player'''
+    ph = "PLACE HOLDER"
+    print("\n----- Player Information -----")
+    print(f"Name: {player["name"]}")
+    print(f"Portal position: {ph}")
+    print(f"Pickaxe level: {ph} ({ph})")
+    print("------------------------------")
+    print(f"Load: {ph} / {ph}")
+    print("------------------------------")
+    print(f"GP: {ph}")
+    print(f"Steps taken: {ph}")
+    print("------------------------------")
+
+
 def show_main_menu() -> None:
     '''Shows main menu'''
     print()
@@ -270,7 +303,7 @@ def show_main_menu() -> None:
 def show_town_menu() -> None:
     '''Shows town menu'''
     print()
-    # TODO: Show Day
+    print(f"DAY {player['day_num']}")
     print("----- Sundrop Town -----")
     print("(B)uy stuff")
     print("See Player (I)nformation")
@@ -334,12 +367,14 @@ def town_menu() -> bool:
 
         if town_menu_choice == "b": # (B)uy stuff
             # show_shop_menu() # Need to include input for current pickaxe level
+            print("SHOW SHOP")
             shop_menu_choice = validate_input("Your choice? ", r"^[p|b|l]$")
             # TODO purchasing mechanic
         elif town_menu_choice == "i":
-            pass
+            show_information()
         elif town_menu_choice == "m":
             pass
+            #draw_map(game_map=game_map, fog=[], player=player)
         elif town_menu_choice == "e":
             pass
         elif town_menu_choice == "v":
