@@ -9,7 +9,7 @@ import re
 
 player = {}
 game_map = []
-fog = []
+fog = [] # May have to use this lol
 
 current_map = []
 
@@ -21,7 +21,7 @@ WIN_GP = 500
 
 minerals = ['copper', 'silver', 'gold']
 mineral_names = {'C': 'copper', 'S': 'silver', 'G': 'gold'}
-pickaxe_price = [50, 150]
+pickaxe_prices = [50, 150]
 
 prices = {}
 prices['copper'] = (1, 3)
@@ -32,6 +32,9 @@ current_prices = {} # NEW
 
 current_save_slot = 1 # Needs to be globalised
 SAVE_SLOT_QUANTITY = 5
+
+
+# ------------------------- GENERAL Functions -------------------------
 
 
 # Assumes that input will be a SINGLE LETTER
@@ -48,8 +51,26 @@ def validate_input(message: str, regex: str) -> str:
             print(f"{user_input} is invalid. Please enter a valid input.")
 
 
+def save_list_to_txt(filename: str, input_list: list) -> None:
+    '''Saves a list into a text file.'''
+    save_file_map = open(filename, "w")
+    text_to_write = ""
+    for row in input_list:
+        for element in row:
+            text_to_write += element
+        text_to_write += "\n"
+    text_to_write = text_to_write[:len(text_to_write)-1]
+    save_file_map.write(text_to_write)
+    save_file_map.close()
+
+
+# ------------------------- Initialise-, Load-, Save-related Functions -------------------------
+
+
 def checking_save_slots(mode: str) -> tuple[str, list]:
     '''
+    Checks all of the save slot folders to see if they are empty or not
+    Takes in a mode for different print messages.
     Returns
     1. the text that lists whether a save slot is empty or has data already written to it
     2. a list of save slots that has data already written to it
@@ -77,7 +98,7 @@ def checking_save_slots(mode: str) -> tuple[str, list]:
                 save_slot_listing_text += f"\033[{written_colour}m{f"Slot {i}: HAS BEEN WRITTEN TO\n"}\033[00m"
             else:
                 save_slot_listing_text += f"\033[{empty_colour}m{f"Slot {i}: EMPTY ; No files in save folder\n"}\033[00m"
-    
+
     return save_slot_listing_text, save_slots_written_already
 
 
@@ -89,7 +110,7 @@ def choose_new_save_slot() -> int:
 
     # Creating regex for input validation based on number of save slots.
     separator = "|"
-    regex = separator.join(list("12345")) # HARD CODED !!!!
+    regex = separator.join([str(i) for i in list(range(1,SAVE_SLOT_QUANTITY))]) # HARD CODED !!!!
     regex = f"^[{regex}]$"
     regex = r"{}".format(regex)
 
@@ -110,8 +131,6 @@ def choose_new_save_slot() -> int:
     return save_slot_choice
 
 
-# This function loads a map structure (a nested list) from a file
-# It also updates MAP_WIDTH and MAP_HEIGHT
 def load_map(filename: str, map_struct: list) -> None:
     # map_struct is
     # probably saying which variable to save to
@@ -137,11 +156,10 @@ def load_map(filename: str, map_struct: list) -> None:
     map_file.close()
 
 
-# This function clears the fog of war at the 3x3 square around the player
 # MY DEFINITION: UPDATES current_map, using player pos, to reveal fog of war
-def clear_fog(fog = [], player: dict = player):
+def clear_fog(fog, player: dict):
     '''This function clears the fog of war at the 3x3 square around the player'''
-    
+
     for i in range(-1, 2): # MAY NEED TO CHANGE
         row_n = player["y"] + i
         for j in range(-1,2):
@@ -167,15 +185,15 @@ def initialize_game() -> None: # default values
         load_map("level1.txt", game_map)
     except FileNotFoundError:
         print("FileNotFoundError; Please check that the level map exists again")
-    
+
     # Create current map with fog
     for _ in range(MAP_HEIGHT):
         row = ["?" for _ in range(MAP_WIDTH)]
         current_map.append(row)
     current_map[0][0] = "M"
-    
+
     # TODO: initialize fog
-    
+
     # TODO: initialize player
     #   You will probably add other entries into the player dictionary
     player['name'] = name
@@ -191,10 +209,11 @@ def initialize_game() -> None: # default values
 
     # NEW BELOW
     player['capacity'] = 10
+    player["pickaxe_level"] = 1
+    player["valid_minable_ores"] = "C" # uses first letters of minerals to check if player can mine
 
-    # TODO
-    # clear_fog(fog, player)
-    clear_fog()
+    # TODO clear_fog(fog, player)
+    clear_fog(fog, player)
     draw_map(game_map=game_map, fog=[], player=player)
     draw_map(game_map=current_map, fog=[], player=player)
 
@@ -202,7 +221,6 @@ def initialize_game() -> None: # default values
     print(f"Pleased to meet you, {name}. Welcome to Sundrop Town!")
 
 
-# This function draws the entire map, covered by the fog
 def draw_map(game_map, fog, player):
     '''This function draws the entire map, covered by the fog'''
 
@@ -216,7 +234,6 @@ def draw_map(game_map, fog, player):
     return
 
 
-# This function draws the 3x3 viewport
 def draw_view(game_map, fog, player):
     '''This function draws the 3x3 viewport'''
     print("VIEW PORT")
@@ -231,34 +248,17 @@ def draw_view(game_map, fog, player):
     return
 
 
-# This function saves the game
 def save_game(save_slot_number: int = current_save_slot) -> None: # default values
     # game_map: list = game_map, fog = [], player: dict = player,\
     '''This function saves the game'''
     directory_name = f"saves/save_slot_{save_slot_number}"
 
-    # save map
-    # Saving map list
-    save_file_map = open(f"{directory_name}/save_{save_slot_number}_map.txt", "w")
-    text_to_write = ""
-    for row in game_map:
-        for element in row:
-            text_to_write += element
-        text_to_write += "\n"
-    text_to_write = text_to_write[:len(text_to_write)-1]
-    save_file_map.write(text_to_write)
-    save_file_map.close()
+    # save map list
+    # Saving game map list
+    save_list_to_txt(f"{directory_name}/save_{save_slot_number}_map.txt", game_map)
 
     # Saving current map
-    save_file_map = open(f"{directory_name}/save_{save_slot_number}_current_map.txt", "w")
-    text_to_write = ""
-    for row in current_map:
-        for element in row:
-            text_to_write += element
-        text_to_write += "\n"
-    text_to_write = text_to_write[:len(text_to_write)-1]
-    save_file_map.write(text_to_write)
-    save_file_map.close()
+    save_list_to_txt(f"{directory_name}/save_{save_slot_number}_current_map.txt", current_map)
 
     # save fog TODO
 
@@ -277,7 +277,6 @@ def save_game(save_slot_number: int = current_save_slot) -> None: # default valu
     print(f"Saved to save slot {save_slot_number}")
 
 
-# This function loads the game
 def load_game(save_slot_number: int = current_save_slot) -> bool: # default values
     # game_map: list = game_map, fog = [], player: dict = player
     '''This function loads the game'''
@@ -315,10 +314,11 @@ def load_game(save_slot_number: int = current_save_slot) -> bool: # default valu
     # print(player)
 
 
-# This function shows the information for the player
-def show_information(menu_type: str): # player argument
+# ------------------------- Functions that show INFORMATION -------------------------
+
+
+def show_information(menu_type: str) -> None: # player argument
     '''This function shows the information for the player'''
-    ph = "PLACE HOLDER"
     print("\n----- Player Information -----")
     print(f"Name: {player["name"]}")
     assert menu_type in ["town", "mine"], f"menu_type = {menu_type} is wrong. check again"
@@ -327,7 +327,7 @@ def show_information(menu_type: str): # player argument
         print(f"Portal position: {(player["x"], player["y"])}")
     else:
         print(f"Current position: {(player["x"], player["y"])}")
-    print(f"Pickaxe level: {ph} ({ph})")
+    print(f"Pickaxe level: {player['pickaxe_level']} ({minerals[player['pickaxe_level']-1]})")
     if menu_type == "mine":
         minerals.reverse()
         for mineral in minerals:
@@ -366,20 +366,77 @@ def show_town_menu() -> None:
     print("------------------------")
 
 
-def show_shop_menu() -> None: # gp: int parameter
+def show_shop_menu(show_pickaxes: bool) -> None: # gp: int parameter
     '''Shows shop menu'''
     backpack_upgrade_price = player["capacity"] * 2
+
     print("\n----------------------- Shop Menu -------------------------")
-    print("(P)ickaxe upgrade to Level {} to mine {} ore for {} GP")
-    print(f"(B)ackpack upgrade to carry {player["capacity"]+2} items for {backpack_upgrade_price} GP")
+    if show_pickaxes:
+        pickaxe_price = pickaxe_prices[player["pickaxe_level"]-1]
+        print(f"(P)ickaxe upgrade to Level {player['pickaxe_level']+1} to mine {minerals[player['pickaxe_level']]} ore for {pickaxe_price} GP")
+    print(f"(B)ackpack upgrade to carry {player["capacity"]+2} items "
+          f"for {backpack_upgrade_price} GP")
     print("(L)eave shop")
     print("-----------------------------------------------------------")
     print(f"GP: {player["GP"]}")
     print("-----------------------------------------------------------")
 
 
+def show_mine_menu() -> None:
+    '''Shows mine menu'''
+    print("---------------------------------------------------")
+    print(f"{f"DAY {player['day']}":^50}")
+    print("---------------------------------------------------")
+    draw_view(game_map=current_map, fog=[], player=player)
+    print(f"Turns left: {player['turns']} {" "*4} Load: "
+          f"{sum([player["copper"], player["silver"], player["gold"]])} / {player["capacity"]} "
+          f"{" "*4} Steps: {player['steps']}")
+    print("(WASD) to move")
+    print("(M)ap, (I)nformation, (P)ortal, (Q)uit to main menu")
+
+
+def show_game_won() -> None:
+    '''Shows game win information'''
+    print("-------------------------------------------------------------")
+    print(f"Woo-hoo! Well done, Cher, you have {player["GP"]} GP!")
+    print("You now have enough to retire and play video games every day.")
+    print(f"And it only took you {player["day"]} days and "
+          f"{player["steps"] * TURNS_PER_DAY + player["steps"]} steps! You win!")
+    print("-------------------------------------------------------------")
+
+
+# ------------------------- Various functions that are used in Menus -------------------------
+
+
+def set_prices() -> None:
+    '''Sets the prices for minerals. To be called at the start of a new day.'''
+    current_prices.clear()
+    for mineral in minerals:
+        current_prices[mineral] = randint(prices[mineral][0], prices[mineral][1])
+
+
+def sell_ores() -> bool:
+    '''Sells ores. Checks if player has won the game.'''
+    have_sold_stuff = False
+    for mineral in minerals:
+        if player[mineral] > 0:
+            GP_sold = player[mineral] * current_prices[mineral]
+            print(f"You sell {player[mineral]} {mineral} ore for {GP_sold} GP.")
+            player["GP"] += GP_sold
+            player[mineral] = 0
+            have_sold_stuff = True
+    if have_sold_stuff:
+        print(f"You now have {player["GP"]} GP!")
+    if player["GP"] >= WIN_GP:
+        show_game_won()
+        return True
+
+
+# ------------------------- Menu Functions -------------------------
+
+
 def main_menu() -> bool: # Return value specifies whether to break out of MAIN LOOP
-    '''Main loop'''
+    '''Simulates the interaction of main menu'''
     while True:
         show_main_menu()
         main_menu_choice = validate_input("Your choice? ",r"^[n|l|q]$")
@@ -413,12 +470,21 @@ def main_menu() -> bool: # Return value specifies whether to break out of MAIN L
 
 
 def shop_menu():
+    '''Simulates the interaction of shop menu'''
     while True:
-        show_shop_menu()
-        shop_menu_choice = validate_input("Your choice? ", r"^[p|b|l]$")
+        if player["pickaxe_level"] <= len(pickaxe_prices):
+            show_shop_menu(show_pickaxes=True)
+            shop_menu_choice = validate_input("Your choice? ", r"^[p|b|l]$")
+        else:
+            show_shop_menu(show_pickaxes=False)
+            shop_menu_choice = validate_input("Your choice? ", r"^[b|l]$")
         if shop_menu_choice == "p":
-            # ADVANCED
-            print("You can't buy a pickaxe now.")
+            pickaxe_price = pickaxe_prices[player["pickaxe_level"]-1]
+            if player["GP"] >= pickaxe_price:
+                player["GP"] -= pickaxe_price
+                player["pickaxe_level"] += 1
+                player["valid_minable_ores"] += minerals[player['pickaxe_level']-1][0].upper()
+                print(f"Congratulations! You can now mine {minerals[player['pickaxe_level']-1]}!")
         elif shop_menu_choice == "b":
             price = player["capacity"] * 2
             if player["GP"] >= price:
@@ -431,44 +497,8 @@ def shop_menu():
             break
 
 
-def show_mine_menu():
-    print("---------------------------------------------------")
-    print(f"{f"DAY {player['day']}":^50}")
-    print("---------------------------------------------------")
-    draw_view(game_map=current_map, fog=[], player=player)
-    print(f"Turns left: {player['turns']} {" "*4} Load: {sum([player["copper"], player["silver"], player["gold"]])} / {player["capacity"]} {" "*4} Steps: {player['steps']}")
-    print("(WASD) to move")
-    print("(M)ap, (I)nformation, (P)ortal, (Q)uit to main menu")
-
-
-def game_won():
-    print("-------------------------------------------------------------")
-    print(f"Woo-hoo! Well done, Cher, you have {player["GP"]} GP!")
-    print("You now have enough to retire and play video games every day.")
-    print(f"And it only took you {player["day"]} days and {player["steps"] * TURNS_PER_DAY + player["steps"]} steps! You win!")
-    print("-------------------------------------------------------------")
-
-
-def set_prices():
-    current_prices.clear()
-    for mineral in minerals:
-        current_prices[mineral] = randint(prices[mineral][0], prices[mineral][1])
-
-
-def sell_ores() -> bool:
-    for mineral in minerals:
-        if player[mineral] > 0:
-            GP_sold = player[mineral] * current_prices[mineral]
-            print(f"You sell {player[mineral]} {mineral} ore for {GP_sold} GP.")
-            player["GP"] += GP_sold
-            player[mineral] = 0
-    print(f"You now have {player["GP"]} GP!")
-    if player["GP"] >= WIN_GP:
-        game_won()
-        return True
-
-
 def mine_menu() -> True:
+    '''Simulates the interaction of mine menu'''
     while True:
         show_mine_menu()
         mine_menu_choice = validate_input("Your choice? ", r"^[w|a|s|d|m|i|p|q]$")
@@ -490,7 +520,7 @@ def town_menu() -> bool:
     set_prices() # NEED TO RUN THIS WHENEVER A NEW DAY PASSES
     while True:
         return_to_main_menu = sell_ores() # True = return to main menu
-        if sell_ores:
+        if return_to_main_menu:
             return True
 
         show_town_menu()
@@ -512,23 +542,24 @@ def town_menu() -> bool:
             return True
 
 
-# Creating the save slot folders. Ensures they exist in working dir.
+#--------------------------- Creating the save slot folders ---------------------------
+# Ensures they exist in working dir.
 # Source: https://www.geeksforgeeks.org/python/create-a-directory-in-python/
 PRIMARY_DIRECTORY_NAME = "saves"
 
-for j in range(1,SAVE_SLOT_QUANTITY+1):
+for j in range(1, SAVE_SLOT_QUANTITY+1):
     FULL_DIR_PATH = f"{PRIMARY_DIRECTORY_NAME}/save_slot_{j}"
     try: # The exceptions are only for debugging
         os.mkdir(FULL_DIR_PATH)
-        # print(f"Directory '{directory_name}' created successfully.")
+        # print(f"Directory '{FULL_DIR_PATH}' created successfully.")
     except FileExistsError:
-        #print(f"Directory '{full_dir_path}' already exists.")
+        #print(f"Directory '{FULL_DIR_PATH}' already exists.")
         pass
     except PermissionError:
-        #print(f"Permission denied: Unable to create '{full_dir_path}'.")
-        pass
+        #print(f"Permission denied: Unable to create '{FULL_DIR_PATH}'.")
+        assert False, f"Permission denied: Unable to create '{FULL_DIR_PATH}'."
     except Exception as e:
-        print(f"An error occurred: {e}")
+        assert False, f"An error occurred while attempting creating {FULL_DIR_PATH}: {e}"
 
 
 #--------------------------- MAIN GAME ---------------------------
@@ -545,10 +576,10 @@ while True: # MAIN LOOP
     main_menu_continue_flag = main_menu() # TRUE = CONTINUE
     if not main_menu_continue_flag:
         break
-    
+
     town_menu_continue_flag = town_menu() # TRUE = BREAK; FALSE = CONTINUE
     if not town_menu_continue_flag:
         break
-    
+
 
 print("Thanks for playing")
