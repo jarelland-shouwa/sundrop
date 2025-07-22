@@ -1,6 +1,6 @@
-# TODO The program should have sufficient comments, 
-# which includes your name, class, date, overall 
-# description of what the program does, as well 
+# TODO The program should have sufficient comments,
+# which includes your name, class, date, overall
+# description of what the program does, as well
 # as the description of the functions.
 
 from random import randint
@@ -91,7 +91,6 @@ def checking_save_slots(mode: str) -> tuple[str, list]:
             directory = os.listdir(f"saves/save_slot_{i}")
         except FileNotFoundError:
             assert False, f"\033[91m{f"Slot {i}: EMPTY ; FileNotFoundError; Please check that this folder has been created."}\033[00m"
-            save_slot_listing_text += f"\033[91m{f"Slot {i}: EMPTY ; FileNotFoundError; Please check that this folder has been created.\n"}\033[00m"
         else:
             if len(directory) != 0:
                 save_slots_written_already.append(i)
@@ -373,7 +372,8 @@ def show_shop_menu(show_pickaxes: bool) -> None: # gp: int parameter
     print("\n----------------------- Shop Menu -------------------------")
     if show_pickaxes:
         pickaxe_price = pickaxe_prices[player["pickaxe_level"]-1]
-        print(f"(P)ickaxe upgrade to Level {player['pickaxe_level']+1} to mine {minerals[player['pickaxe_level']]} ore for {pickaxe_price} GP")
+        print(f"(P)ickaxe upgrade to Level {player['pickaxe_level']+1} "
+              f"to mine {minerals[player['pickaxe_level']]} ore for {pickaxe_price} GP")
     print(f"(B)ackpack upgrade to carry {player["capacity"]+2} items "
           f"for {backpack_upgrade_price} GP")
     print("(L)eave shop")
