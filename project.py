@@ -33,6 +33,11 @@ current_prices = {} # NEW
 current_save_slot = 1 # Needs to be globalised
 SAVE_SLOT_QUANTITY = 5
 
+WASD_TO_DIRECTION_AND_MOVE_VALUE = {"w": {"direction": "y", "move_value": -1},
+                                    "a": {"direction": "x", "move_value": -1},
+                                    "s": {"direction": "y", "move_value": 1},
+                                    "d": {"direction": "x", "move_value": 1}}
+
 
 # ------------------------- GENERAL Functions -------------------------
 
@@ -333,7 +338,7 @@ def show_information(menu_type: str) -> None: # player argument
             print(f"{mineral.capitalize()}: {player[mineral]}")
 
     print("------------------------------")
-    print(f"Load: {sum([player[mineral] for mineral in minerals])} / {player["capacity"]}")
+    print(f"Load: {sum_ores_in_backpack()} / {player["capacity"]}")
     print("------------------------------")
     print(f"GP: {player["GP"]}")
     print(f"Steps taken: {player["steps"]}")
@@ -389,7 +394,7 @@ def show_mine_menu() -> None:
     print("---------------------------------------------------")
     draw_view(game_map=current_map, fog=[], player=player)
     print(f"Turns left: {player['turns']} {" "*4} Load: "
-          f"{sum([player["copper"], player["silver"], player["gold"]])} / {player["capacity"]} "
+          f"{sum_ores_in_backpack()} / {player["capacity"]} "
           f"{" "*4} Steps: {player['steps']}")
     print("(WASD) to move")
     print("(M)ap, (I)nformation, (P)ortal, (Q)uit to main menu")
@@ -406,6 +411,11 @@ def show_game_won() -> None:
 
 
 # ------------------------- Various functions that are used in Menus -------------------------
+
+
+def sum_ores_in_backpack() -> int:
+    '''Returns the sum of the quantity of minerals in backpack.'''
+    return sum(player[mineral] for mineral in minerals)
 
 
 def set_prices() -> None:
@@ -430,6 +440,40 @@ def sell_ores() -> bool:
     if player["GP"] >= WIN_GP:
         show_game_won()
         return True
+
+
+def valid_move_checker(direction: str, move_value: int) -> bool:
+    '''Checks if a move of WASD is valid.
+    direction = "x" or "y"
+    move_value = -1 or 1'''
+    # TO consider:
+    # https://pylint.readthedocs.io/en/latest/user_guide/messages/refactor/inconsistent-return-statements.html
+
+    # Input checks
+    if direction not in ["x", "y"]:
+        raise AssertionError(f"{direction} is an invalid value for direction")
+    if move_value not in [1,-1]:
+        raise AssertionError(f"{move_value} is an invalid value for move_value")
+
+    # Determines new hypothetical position and square
+    position_to_check = {"x": player["x"], "y": player["y"]}
+    position_to_check[direction] += move_value
+    square_to_check = current_map[position_to_check["y"]][position_to_check["x"]]
+
+    # Checks if player's backpack is full and if the square to be stepped on is a mineral
+    is_player_backpack_full = sum_ores_in_backpack() == player["capacity"]
+    is_next_square_a_mineral = square_to_check in list(key for key in mineral_names)
+    if is_player_backpack_full and is_next_square_a_mineral:
+        print("You can't carry any more, so you can't go that way.")
+        return False
+
+    # Checks if hypothetical position is within map boundaries
+    is_x_valid = 0 <= position_to_check["x"] <= MAP_WIDTH - 1
+    is_y_valid = 0 <= position_to_check["y"] <= MAP_HEIGHT - 1
+    if is_x_valid and is_y_valid:
+        return True
+    print("You can't go that way.")
+        # If you step on the ‘T’ square at (0, 0), you will return to town
 
 
 # ------------------------- Menu Functions -------------------------
@@ -469,7 +513,7 @@ def main_menu() -> bool: # Return value specifies whether to break out of MAIN L
             # break
 
 
-def shop_menu():
+def shop_menu() -> None:
     '''Simulates the interaction of shop menu'''
     while True:
         if player["pickaxe_level"] <= len(pickaxe_prices):
@@ -497,13 +541,22 @@ def shop_menu():
             break
 
 
-def mine_menu() -> True:
+def mine_menu() -> bool:
     '''Simulates the interaction of mine menu'''
     while True:
         show_mine_menu()
-        mine_menu_choice = validate_input("Your choice? ", r"^[w|a|s|d|m|i|p|q]$")
+        mine_menu_choice = validate_input("Action? ", r"^[w|a|s|d|m|i|p|q]$")
         if mine_menu_choice in "wasd":
-            pass
+            direction = WASD_TO_DIRECTION_AND_MOVE_VALUE[mine_menu_choice]["direction"]
+            move_value = WASD_TO_DIRECTION_AND_MOVE_VALUE[mine_menu_choice]["move_value"]
+            if valid_move_checker(direction=direction,move_value=move_value):
+                print("YAY you can move")
+                player[direction] += move_value # Update player position
+                # update current_map using game_map (clears fog)
+                #   (consider if new step is on an ore or not)
+                # update view_port
+            else:
+                print("YOU CANNOT MOVE!")
         elif mine_menu_choice == "m":
             draw_map(game_map=current_map, fog=[], player=player)
         elif mine_menu_choice == "i":
