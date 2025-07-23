@@ -69,6 +69,28 @@ def save_list_to_txt(filename: str, input_list: list) -> None:
     save_file_map.close()
 
 
+def determine_square_grid_in_list(x: int, y: int,
+                                  list_height: int,
+                                  list_width: int) -> list[dict[int, int]]: # two_d_list_input: list
+    '''Returns a list of dicts of positions, satisfying the following:
+    The positions are within a square of side 3 as the (x,y) the centre.
+    I.e. positions that are within a Manhattan Distance of 2 units, exclduing (x,y)'''
+    valid_positions = []
+    for i in range(-1, 2):
+        row_n = y + i
+        for j in range(-1,2):
+            col_n = x + j
+
+            # Excludes the centre of the square
+            is_not_centre = not(col_n == x and row_n == y)
+            # Checks if position found is within list's boundaries
+            is_within = 0 <= row_n <= (list_height-1) and 0 <= col_n <= (list_width-1)
+
+            if is_within and is_not_centre:
+                valid_positions.append({"x": col_n, "y": row_n})
+    return valid_positions
+
+
 # ------------------------- Initialise-, Load-, Save-related Functions -------------------------
 
 
@@ -476,6 +498,11 @@ def valid_move_checker(direction: str, move_value: int) -> bool:
         # If you step on the ‘T’ square at (0, 0), you will return to town
 
 
+def ore_found():
+    '''Automates what happens if a player finds an ore.'''
+    pass
+
+
 # ------------------------- Menu Functions -------------------------
 
 
@@ -547,13 +574,29 @@ def mine_menu() -> bool:
         show_mine_menu()
         mine_menu_choice = validate_input("Action? ", r"^[w|a|s|d|m|i|p|q]$")
         if mine_menu_choice in "wasd":
+            # TODO CREATE A NEW FUNCTION FOR SIMULATING MOVEMENT IN MINE
             direction = WASD_TO_DIRECTION_AND_MOVE_VALUE[mine_menu_choice]["direction"]
             move_value = WASD_TO_DIRECTION_AND_MOVE_VALUE[mine_menu_choice]["move_value"]
             if valid_move_checker(direction=direction,move_value=move_value):
                 print("YAY you can move")
-                player[direction] += move_value # Update player position
+                # Restore square to be stepped away (was previously covered by player avatar)
+                current_map[player["y"]][player["x"]] = game_map[player["y"]][player["x"]]
+
                 # update current_map using game_map (clears fog)
-                #   (consider if new step is on an ore or not)
+                player[direction] += move_value # Update player position
+                current_map[player["y"]][player["x"]] = game_map[player["y"]][player["x"]]
+
+                positions_to_update = determine_square_grid_in_list(x=player["x"],
+                                                                    y=player["y"],
+                                                                    list_height=MAP_HEIGHT,
+                                                                    list_width=MAP_WIDTH)
+                for position in positions_to_update:
+                    y = position["y"]
+                    x = position["x"]
+                    current_map[y][x] = game_map[y][x]
+
+                if current_map[player["y"]][player["x"]] in mineral_names:
+                    pass # (consider if new step is on an ore or not)
                 # update view_port
             else:
                 print("YOU CANNOT MOVE!")
