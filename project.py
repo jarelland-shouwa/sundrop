@@ -1,7 +1,9 @@
+'''
 # TODO The program should have sufficient comments,
 # which includes your name, class, date, overall
 # description of what the program does, as well
 # as the description of the functions.
+'''
 
 from random import randint
 import os
@@ -9,7 +11,7 @@ import re
 
 player = {}
 game_map = []
-fog = [] # May have to use this lol
+fog = [] # (Update) :May NOT have to use this lol
 
 current_map = []
 
@@ -28,7 +30,13 @@ prices['copper'] = (1, 3)
 prices['silver'] = (5, 8)
 prices['gold'] = (10, 18)
 
-current_prices = {} # NEW
+# NEW
+current_prices = {}
+
+pieces_per_node = {}
+pieces_per_node['copper'] = (1, 5)
+pieces_per_node['silver'] = (1, 3)
+pieces_per_node['gold'] = (1, 2)
 
 current_save_slot = 1 # Needs to be globalised
 SAVE_SLOT_QUANTITY = 5
@@ -71,11 +79,20 @@ def save_list_to_txt(filename: str, input_list: list) -> None:
 
 def determine_square_grid_in_list(x: int, y: int,
                                   list_height: int,
-                                  list_width: int) -> list[dict[int, int]]: # two_d_list_input: list
-    '''Returns a list of dicts of positions, satisfying the following:
+                                  list_width: int) -> tuple[
+                                      list[dict[int, int]],
+                                      list[dict[int, int]]]:
+    # unused argument: two_d_list_input: list
+    # NOTE Currently the invalid_positions output is not being used.
+    '''Returns a tuple of lists of dicts of positions, satisfying the following:
     The positions are within a square of side 3 as the (x,y) the centre.
-    I.e. positions that are within a Manhattan Distance of 2 units, exclduing (x,y)'''
+    I.e. positions that are within a Manhattan Distance of 2 units, exclduing (x,y)
+    
+    Output: valid_positions, invalid_positions
+    valid_positions = [pos_dict_1, pos_dict_2, pos_dict_3, ...]
+    invalid_positions = [pos_dict_1, pos_dict_2, pos_dict_3, ...]'''
     valid_positions = []
+    invalid_positions = []
     for i in range(-1, 2):
         row_n = y + i
         for j in range(-1,2):
@@ -88,7 +105,9 @@ def determine_square_grid_in_list(x: int, y: int,
 
             if is_within and is_not_centre:
                 valid_positions.append({"x": col_n, "y": row_n})
-    return valid_positions
+            else:
+                invalid_positions.append({"x": col_n, "y": row_n})
+    return valid_positions, invalid_positions
 
 
 # ------------------------- Initialise-, Load-, Save-related Functions -------------------------
@@ -182,19 +201,20 @@ def load_map(filename: str, map_struct: list) -> None:
     map_file.close()
 
 
+# $$$$$ FOR NOW NOT USED
 # MY DEFINITION: UPDATES current_map, using player pos, to reveal fog of war
-def clear_fog(fog, player: dict):
-    '''This function clears the fog of war at the 3x3 square around the player'''
+# def clear_fog(fog, player: dict): # Kinda broken
+#     '''This function clears the fog of war at the 3x3 square around the player'''
 
-    for i in range(-1, 2): # MAY NEED TO CHANGE
-        row_n = player["y"] + i
-        for j in range(-1,2):
-            col_n = player["x"] + j
-            if 0 <= row_n <= (MAP_HEIGHT - 1) and 0 <= col_n <= (MAP_WIDTH-1):
-                current_map[row_n][col_n] = game_map[row_n][col_n]
-    current_map[player["y"]][player["x"]] = "M"
+#     for i in range(-1, 2): # MAY NEED TO CHANGE
+#         row_n = player["y"] + i
+#         for j in range(-1,2):
+#             col_n = player["x"] + j
+#             if 0 <= row_n <= (MAP_HEIGHT - 1) and 0 <= col_n <= (MAP_WIDTH-1):
+#                 current_map[row_n][col_n] = game_map[row_n][col_n]
+#     current_map[player["y"]][player["x"]] = "M"
 
-    return
+#     return
 
 
 def initialize_game() -> None: # default values
@@ -212,13 +232,13 @@ def initialize_game() -> None: # default values
     except FileNotFoundError:
         print("FileNotFoundError; Please check that the level map exists again")
 
-    # Create current map with fog
+    # Create current map with fog TODO Create a function that does this
     for _ in range(MAP_HEIGHT):
         row = ["?" for _ in range(MAP_WIDTH)]
         current_map.append(row)
     current_map[0][0] = "M"
 
-    # TODO: initialize fog
+    # TODO: initialize fog (may not be needed)
 
     # TODO: initialize player
     #   You will probably add other entries into the player dictionary
@@ -238,40 +258,72 @@ def initialize_game() -> None: # default values
     player["pickaxe_level"] = 1
     player["valid_minable_ores"] = "C" # uses first letters of minerals to check if player can mine
 
-    # TODO clear_fog(fog, player)
-    clear_fog(fog, player)
-    draw_map(game_map=game_map, fog=[], player=player)
-    draw_map(game_map=current_map, fog=[], player=player)
+    # TODO clear_fog(fog, player) (may not be needed)
 
     save_game()
     print(f"Pleased to meet you, {name}. Welcome to Sundrop Town!")
 
 
-def draw_map(game_map, fog, player):
+def draw_map(game_map, fog, player, in_town: bool) -> None:
     '''This function draws the entire map, covered by the fog'''
 
-    print(f"\n+{"-"*MAP_WIDTH}+")
-    for row in game_map: # Can generalise this into a UDF
+    output_text = f"\n+{"-"*MAP_WIDTH}+\n"
+    for i in range(MAP_HEIGHT): # Can generalise this into a UDF
         row_text = ""
-        for cell in row:
-            row_text += cell
-        print(f"|{row_text}|")
-    print(f"+{"-"*MAP_WIDTH}+")
-    return
+        for j in range(MAP_WIDTH):
+            if in_town and (i,j) == (0, 0):
+                #print(f"In town: M, ({i}, {j})")
+                row_text += "M"
+                continue
+            if in_town and game_map[i][j] == "M":
+                #print(f"In town: P, ({i}, {j})")
+                row_text += "P"
+                continue
+
+            row_text += game_map[i][j]
+        output_text += f"|{row_text}|\n"
+    output_text += f"+{"-"*MAP_WIDTH}+"
+
+    print(output_text)
 
 
-def draw_view(game_map, fog, player):
+def draw_view(game_map, fog, player) -> None: # game_map, fog, player
     '''This function draws the 3x3 viewport'''
-    print("VIEW PORT")
     print(f"DAY {player['day']}")
-    # print("+---+")  # MAY NEED TO CHANGE
+    # valid_positions, invalid_positions = determine_square_grid_in_list(x=player["x"],
+    #                                                                    y=player["y"],
+    #                                                                    list_height=MAP_HEIGHT,
+    #                                                                    list_width=MAP_WIDTH)
+    x=player["x"]
+    y=player["y"]
+    list_height=MAP_HEIGHT
+    list_width=MAP_WIDTH
+
+    view_to_print = "+---+\n"
+    for i in range(-1, 2):
+        row_n = y + i
+        view_to_print += "|"
+        for j in range(-1,2):
+            col_n = x + j
+
+            # Checks if position found is within list's boundaries
+            is_within = 0 <= row_n <= (list_height-1) and 0 <= col_n <= (list_width-1)
+            is_at_player_position = row_n == player["y"] and col_n == player["x"]
+
+            if is_at_player_position:
+                view_to_print += "M"
+            elif is_within:
+                view_to_print += current_map[row_n][col_n]
+            else:
+                view_to_print += "#"
+        view_to_print += "|\n"
+    view_to_print += "+---+"
+    print(view_to_print)
     # for row in fog:
     #     row_text = ""
     #     for cell in row:
     #         row_text += cell
     #     print(f"|{row_text}|")
-    # print("+---+")
-    return
 
 
 def save_game(save_slot_number: int = current_save_slot) -> None: # default values
@@ -337,7 +389,6 @@ def load_game(save_slot_number: int = current_save_slot) -> bool: # default valu
     except FileNotFoundError:
         print("There is not a saved game. Please start a new game.")
         return False
-    # print(player)
 
 
 # ------------------------- Functions that show INFORMATION -------------------------
@@ -428,7 +479,7 @@ def show_game_won() -> None:
     print(f"Woo-hoo! Well done, Cher, you have {player["GP"]} GP!")
     print("You now have enough to retire and play video games every day.")
     print(f"And it only took you {player["day"]} days and "
-          f"{player["steps"] * TURNS_PER_DAY + player["steps"]} steps! You win!")
+          f"{player["steps"]} steps! You win!")
     print("-------------------------------------------------------------")
 
 
@@ -462,24 +513,35 @@ def sell_ores() -> bool:
     if player["GP"] >= WIN_GP:
         show_game_won()
         return True
+    return False
 
 
 def valid_move_checker(direction: str, move_value: int) -> bool:
     '''Checks if a move of WASD is valid.
     direction = "x" or "y"
     move_value = -1 or 1'''
-    # TO consider:
-    # https://pylint.readthedocs.io/en/latest/user_guide/messages/refactor/inconsistent-return-statements.html
-
     # Input checks
     if direction not in ["x", "y"]:
         raise AssertionError(f"{direction} is an invalid value for direction")
     if move_value not in [1,-1]:
         raise AssertionError(f"{move_value} is an invalid value for move_value")
 
+    player["turns"] -= 1
+    player["steps"] += 1
+
     # Determines new hypothetical position and square
     position_to_check = {"x": player["x"], "y": player["y"]}
     position_to_check[direction] += move_value
+    # print(f"{position_to_check["x"]}, {position_to_check['y']}")
+
+    # Checks if hypothetical position is within map boundaries
+    is_x_valid = 0 <= position_to_check["x"] <= MAP_WIDTH - 1
+    is_y_valid = 0 <= position_to_check["y"] <= MAP_HEIGHT - 1
+    if not (is_x_valid and is_y_valid):
+        print("You can't go that way.")
+        return False
+
+    # Determines new hypothetical square
     square_to_check = current_map[position_to_check["y"]][position_to_check["x"]]
 
     # Checks if player's backpack is full and if the square to be stepped on is a mineral
@@ -489,19 +551,90 @@ def valid_move_checker(direction: str, move_value: int) -> bool:
         print("You can't carry any more, so you can't go that way.")
         return False
 
-    # Checks if hypothetical position is within map boundaries
-    is_x_valid = 0 <= position_to_check["x"] <= MAP_WIDTH - 1
-    is_y_valid = 0 <= position_to_check["y"] <= MAP_HEIGHT - 1
-    if is_x_valid and is_y_valid:
+    return True
+
+
+def is_ore_minable(ore_found_input: str) -> bool:
+    '''Checks if the ore found can be mined depending on pickaxe level.'''
+    if ore_found_input in player["valid_minable_ores"]:
+        print("You can mine this!")
         return True
-    print("You can't go that way.")
-        # If you step on the ‘T’ square at (0, 0), you will return to town
+    print(f"Your pickaxe level ({player['pickaxe_level']}) is "
+        f"too low, so you cannot mine {mineral_names[ore_found_input]}.")
+    return False
 
 
-def ore_found():
-    '''Automates what happens if a player finds an ore.'''
-    pass
+def process_ore_into_backpack(ore_found_input: str) -> None:
+    '''Adds the pieces of ore found into the backpack depending on backpack capacity.'''
+    remaining_space_in_backpack = player["capacity"] - sum_ores_in_backpack()
+    mineral_name = mineral_names[ore_found_input]
+    pieces_found = randint(pieces_per_node[mineral_name][0], pieces_per_node[mineral_name][1])
 
+    if pieces_found <= remaining_space_in_backpack:
+        print(f"You mined {pieces_found} piece(s) of {mineral_name}.")
+        player[mineral_names[ore_found_input]] += pieces_found
+    else:
+        print(f"You mined {pieces_found} piece(s) of {mineral_name}.")
+        print(f"...but you can only carry {remaining_space_in_backpack} more piece(s)!")
+        player[mineral_names[ore_found_input]] += remaining_space_in_backpack
+
+
+def movement_in_mine(mine_menu_choice_input: str) -> bool:
+    '''Simulates movement in the mine (WASD input in Mine Menu)'''
+    direction = WASD_TO_DIRECTION_AND_MOVE_VALUE[mine_menu_choice_input]["direction"]
+    move_value = WASD_TO_DIRECTION_AND_MOVE_VALUE[mine_menu_choice_input]["move_value"]
+    if valid_move_checker(direction=direction,move_value=move_value):
+        # print("YAY you can move!")
+        # Restore square to be stepped away (was previously covered by player avatar)
+        current_map[player["y"]][player["x"]] = game_map[player["y"]][player["x"]]
+
+        # TODO create a duplicate of game_map that insteads, has spaces for ores mined already
+        player[direction] += move_value # Update player position
+
+        # Update positions within 3x3 square from player;
+        # update current_map using game_map (clears fog)
+        positions_to_update = determine_square_grid_in_list(x=player["x"],
+                                                            y=player["y"],
+                                                            list_height=MAP_HEIGHT,
+                                                            list_width=MAP_WIDTH)[0]
+        for position in positions_to_update:
+            y = position["y"]
+            x = position["x"]
+            current_map[y][x] = game_map[y][x]
+
+        square_stepped = current_map[player["y"]][player["x"]]
+
+        if square_stepped in mineral_names: # if an ore was stepped on
+            ore_found = current_map[player["y"]][player["x"]]
+            # print(f"Ore found: {ore_found}")
+            if is_ore_minable(ore_found_input=ore_found):
+                process_ore_into_backpack(ore_found_input=ore_found)
+        elif square_stepped == "T":
+            # If you step on the
+            # 'T' square at (0, 0), you will return to town
+            print("You returned to town.")
+            return True
+
+        current_map[player["y"]][player["x"]] = "M"
+
+    # Check if player's backpack is full
+    if player["capacity"] == sum_ores_in_backpack():
+        print("You can't carry any more, so you can't go that way.\n"
+            "You are exhausted.\n"
+            "You place your portal stone here and zap back to town.")
+        return True
+    if player["turns"] == 0:
+        player["turns"] = TURNS_PER_DAY
+        player["day"] += 1
+        set_prices()
+        # TODO 1. Need to call this only when day increases; 2. Reset mine
+        set_prices()
+        print("You are exhausted.\n"
+            "You place your portal stone here and zap back to town.")
+        current_map[player["y"]][player["x"]] = "P"
+        return True
+
+    return False
 
 # ------------------------- Menu Functions -------------------------
 
@@ -516,28 +649,26 @@ def main_menu() -> bool: # Return value specifies whether to break out of MAIN L
             initialize_game()
             load_game()
             return True
-            # break
-        elif main_menu_choice == "l":
+        if main_menu_choice == "l":
             save_slot_listing_text, save_slots_written_already = checking_save_slots(mode="load")
             if len(save_slots_written_already) == 0:
                 print("There has not been a save slot written to. Please create a new save slot.")
                 continue
-            else:
-                print(save_slot_listing_text)
-                separator = "|"
-                save_slots_written_already = [str(n) for n in save_slots_written_already]
-                regex = separator.join(save_slots_written_already)
-                regex = f"^[{regex}]$"
-                regex = r"{}".format(regex)
 
-                save_slot_choice = int(validate_input("Your choice? ", regex))
-                loaded_success = load_game(save_slot_number=save_slot_choice)
-                if not loaded_success:
-                    continue
-                return True
-        elif main_menu_choice == "q":
+            print(save_slot_listing_text)
+            separator = "|"
+            save_slots_written_already = [str(n) for n in save_slots_written_already]
+            regex = separator.join(save_slots_written_already)
+            regex = f"^[{regex}]$"
+            regex = r"{}".format(regex)
+
+            save_slot_choice = int(validate_input("Your choice? ", regex))
+            loaded_success = load_game(save_slot_number=save_slot_choice)
+            if not loaded_success:
+                continue
+            return True
+        if main_menu_choice == "q":
             return False
-            # break
 
 
 def shop_menu() -> None:
@@ -574,46 +705,22 @@ def mine_menu() -> bool:
         show_mine_menu()
         mine_menu_choice = validate_input("Action? ", r"^[w|a|s|d|m|i|p|q]$")
         if mine_menu_choice in "wasd":
-            # TODO CREATE A NEW FUNCTION FOR SIMULATING MOVEMENT IN MINE
-            direction = WASD_TO_DIRECTION_AND_MOVE_VALUE[mine_menu_choice]["direction"]
-            move_value = WASD_TO_DIRECTION_AND_MOVE_VALUE[mine_menu_choice]["move_value"]
-            if valid_move_checker(direction=direction,move_value=move_value):
-                print("YAY you can move")
-                # Restore square to be stepped away (was previously covered by player avatar)
-                current_map[player["y"]][player["x"]] = game_map[player["y"]][player["x"]]
-
-                # update current_map using game_map (clears fog)
-                player[direction] += move_value # Update player position
-                current_map[player["y"]][player["x"]] = game_map[player["y"]][player["x"]]
-
-                positions_to_update = determine_square_grid_in_list(x=player["x"],
-                                                                    y=player["y"],
-                                                                    list_height=MAP_HEIGHT,
-                                                                    list_width=MAP_WIDTH)
-                for position in positions_to_update:
-                    y = position["y"]
-                    x = position["x"]
-                    current_map[y][x] = game_map[y][x]
-
-                if current_map[player["y"]][player["x"]] in mineral_names:
-                    pass # (consider if new step is on an ore or not)
-                # update view_port
-            else:
-                print("YOU CANNOT MOVE!")
+            return_to_town_menu = movement_in_mine(mine_menu_choice_input=mine_menu_choice)
+            if return_to_town_menu:
+                return False
         elif mine_menu_choice == "m":
-            draw_map(game_map=current_map, fog=[], player=player)
+            draw_map(game_map=current_map, fog=[], player=player, in_town=False)
         elif mine_menu_choice == "i":
             show_information("mine")
         elif mine_menu_choice == "p":
             print("You place your portal stone here and zap back to town.")
-            break
+            return False
         else:
             return True
 
 
 def town_menu() -> bool:
     '''Simulates the interaction of town menu'''
-    set_prices() # NEED TO RUN THIS WHENEVER A NEW DAY PASSES
     while True:
         return_to_main_menu = sell_ores() # True = return to main menu
         if return_to_main_menu:
@@ -627,7 +734,7 @@ def town_menu() -> bool:
         elif town_menu_choice == "i":
             show_information("town")
         elif town_menu_choice == "m":
-            draw_map(game_map=current_map, fog=[], player=player)
+            draw_map(game_map=current_map, fog=[], player=player, in_town=True)
         elif town_menu_choice == "e":
             return_to_main_menu = mine_menu()
             if return_to_main_menu: # TRUE = return to main menu
