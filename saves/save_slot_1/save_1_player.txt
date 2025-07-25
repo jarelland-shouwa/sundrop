@@ -1,13 +1,13 @@
 name,bob
-x,0
+x,7
 y,0
 copper,0
 silver,0
 gold,0
-GP,0
+GP,18
 day,1
-steps,0
-turns,20
+steps,7
+turns,13
 capacity,10
 pickaxe_level,1
 valid_minable_ores,C
