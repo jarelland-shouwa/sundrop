@@ -1,4 +1,4 @@
-T       C       SS     GGG    
+T               SS     GGG    
      CCCCC     SSSS      GGG  
     CCCC      SSSS      GGG   
              SSSSS  CCC       
