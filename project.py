@@ -118,9 +118,7 @@ def determine_square_grid_in_list(x: int, y: int,
 
 def create_regex(valid_char: str) -> str:
     '''Creates a raw expression for regex that only accpets certain single characters.'''
-    regex_out = f"^[{valid_char}]$"
-    regex_out = r"{}".format(regex_out)
-    return regex_out
+    return rf"^[{valid_char}]$"
 
 
 # ------------------------- Initialise-, Load-, Save-related Functions -------------------------
@@ -150,14 +148,15 @@ def find_written_slots(mode: str) -> list[int]:
         except FileNotFoundError:
             assert False, f"\033[91m{f"Slot {i}: EMPTY ; FileNotFoundError; Please check that this folder has been created."}\033[00m"
         else:
-            if len(directory) != 0:
+            if len(directory) != 0: # TODO check that exact files with naming conventions are included (to account for deleted fies)
                 written_slots.append(i)
                 save_slot_listing_text += f"\033[{written_colour}m{f"Slot {i}: HAS BEEN WRITTEN TO\n"}\033[00m"
             else:
                 save_slot_listing_text += f"\033[{empty_colour}m{f"Slot {i}: EMPTY ; No files in save folder\n"}\033[00m"
 
-    if len(written_slots) > 0:
-        print(save_slot_listing_text) # lists whether a save slot is empty or has data already written to it.
+    # if len(written_slots) > 0:
+    # if mode == "save":
+    print(save_slot_listing_text) # lists whether a save slot is empty or has data already written to it.
     return written_slots
 
 
@@ -190,7 +189,6 @@ def load_map(filename: str, map_struct: list) -> None:
     Loads a map structure (a nested list) from a file.
     Updates MAP_WIDTH and MAP_HEIGHT.
     Saves data to map_struct.'''
-
     map_file = open(filename, 'r')
     global MAP_WIDTH
     global MAP_HEIGHT
@@ -234,12 +232,14 @@ def initialize_game() -> None: # default values
     name: str = validate_input("Greetings, miner! What is your name? ", r"^.+$")
 
     # initialise map
+    game_map.clear()
     try:
-        load_map("level1.txt", game_map)
+        load_map(filename="level1.txt", map_struct=game_map)
     except FileNotFoundError:
         print("FileNotFoundError; Please check that the level map exists again.")
 
     # Create current map WITH fog TODO Create a function that does this
+    current_map.clear()
     for _ in range(MAP_HEIGHT):
         row: list[str] = ["?" for _ in range(MAP_WIDTH)]
         current_map.append(row)
@@ -248,6 +248,7 @@ def initialize_game() -> None: # default values
     # TODO: initialize fog (may not be needed)
 
     # initialize player
+    player.clear()
     player['name'] = name
     player['x'] = 0
     player['y'] = 0
@@ -266,7 +267,6 @@ def initialize_game() -> None: # default values
 
     # TODO clear_fog(fog, player) (may not be needed)
 
-    save_game()
     print(f"Pleased to meet you, {name}. Welcome to Sundrop Town!")
 
 
@@ -325,7 +325,7 @@ def get_save_slot_dir(number: int) -> str:
     return f"saves/save_slot_{number}"
 
 
-def save_game(save_slot_number: int = current_save_slot) -> None: # default values
+def save_game(save_slot_number: int) -> None: # default values
     # game_map: list = game_map, fog = [], player: dict = player,\
     '''This function saves the game'''
     directory_name: str = get_save_slot_dir(number=save_slot_number)
@@ -351,15 +351,15 @@ def save_game(save_slot_number: int = current_save_slot) -> None: # default valu
     print(f"Saved to save slot {save_slot_number}")
 
 
-def load_game(save_slot_number: int = current_save_slot) -> bool: # default values
+def load_game(save_slot_number: int) -> bool: # default values
     # game_map: list = game_map, fog = [], player: dict = player
     '''This function loads the game.'''
     directory_name: str = get_save_slot_dir(number=save_slot_number)
 
     try:
         # load map
-        load_map(f"{directory_name}/save_{save_slot_number}_map.txt", game_map)
-        load_map(f"{directory_name}/save_{save_slot_number}_current_map.txt", current_map)
+        load_map(filename=f"{directory_name}/save_{save_slot_number}_map.txt", map_struct=game_map)
+        load_map(filename=f"{directory_name}/save_{save_slot_number}_current_map.txt", map_struct=current_map)
         # print(f"game_map: {game_map}")
 
         # TODO load fog
@@ -505,10 +505,12 @@ def set_prices() -> None:
 
 
 def sell_ores() -> bool:
-    '''Sells ores. Checks if player has won the game.'''
+    '''Sells ores. Checks if player has won the game.
+    Returns bool value that specifies whether to return to main menu or not.'''
     have_sold_stuff: bool = False
     for mineral in minerals:
         if player[mineral] > 0:
+            print(current_prices)
             GP_sold: int = player[mineral] * current_prices[mineral]
             print(f"You sell {player[mineral]} {mineral} ore for {GP_sold} GP.")
             player["GP"] += GP_sold
@@ -518,6 +520,7 @@ def sell_ores() -> bool:
         print(f"You now have {player["GP"]} GP!")
     if player["GP"] >= WIN_GP:
         show_game_won()
+        save_game(save_slot_number=current_save_slot)
         return True
     return False
 
@@ -644,15 +647,18 @@ def movement_in_mine(mine_menu_choice_input: str) -> bool:
 # ------------------------- Menu Functions -------------------------
 
 
-def main_menu() -> bool: # Return value specifies whether to break out of MAIN LOOP
-    '''Simulates the interaction of main menu'''
+def main_menu() -> bool:
+    '''Simulates the interaction of main menu.
+    Return bool value specifies whether to exit program or not.'''
+    global current_save_slot
     while True:
         show_main_menu()
         main_menu_choice: str = validate_input("Your choice? ",r"^[n|l|q]$")
 
         if main_menu_choice == "n":
             initialize_game()
-            load_game()
+            save_game(save_slot_number=current_save_slot)
+            load_game(save_slot_number=current_save_slot)
             return True
         if main_menu_choice == "l":
             save_slots_written_already: list[int] = find_written_slots(mode="load")
@@ -665,8 +671,8 @@ def main_menu() -> bool: # Return value specifies whether to break out of MAIN L
             regex = separator.join(save_slots_written_already)
             regex = create_regex(valid_char=regex)
 
-            save_slot_choice: int = int(validate_input("Your choice? ", regex))
-            loaded_success: bool = load_game(save_slot_number=save_slot_choice)
+            current_save_slot = int(validate_input("Your choice? ", regex))
+            loaded_success: bool = load_game(save_slot_number=current_save_slot)
             if not loaded_success:
                 continue
             return True
@@ -703,7 +709,8 @@ def shop_menu() -> None:
 
 
 def mine_menu() -> bool:
-    '''Simulates the interaction of mine menu'''
+    '''Simulates the interaction of mine menu.
+    Return bool value specifies whether to return to main menu or not.'''
     while True:
         show_mine_menu()
         mine_menu_choice: str = validate_input("Action? ", r"^[w|a|s|d|m|i|p|q]$")
@@ -724,8 +731,9 @@ def mine_menu() -> bool:
 
 def town_menu() -> None:
     '''Simulates the interaction of town menu'''
+    # print(current_prices)
     while True:
-        return_to_main_menu: bool = sell_ores() # True = return to main menu
+        return_to_main_menu: bool = sell_ores()
         if return_to_main_menu:
             break
 
@@ -740,10 +748,10 @@ def town_menu() -> None:
             draw_map(game_map=current_map, fog=[], player=player, in_town=True)
         elif town_menu_choice == "e":
             return_to_main_menu: bool = mine_menu()
-            if return_to_main_menu: # TRUE = return to main menu
+            if return_to_main_menu:
                 break
         elif town_menu_choice == "v":
-            save_game()
+            save_game(save_slot_number=current_save_slot)
         else:
             break
 
