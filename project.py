@@ -3,6 +3,16 @@
 # which includes your name, class, date, overall
 # description of what the program does, as well
 # as the description of the functions.
+
+FIXME
+1. Name for now is converted to lower case
+
+2.
+E.g. Savefile:
+name,bob
+
+Someone can input ",bob" for name and screw everything up.
+Need to implement a way to avoid this.
 '''
 
 from random import randint
@@ -103,7 +113,7 @@ def determine_square_grid_in_list(x: int, y: int,
     invalid_positions: list[dict[str: int]] = []
     for i in range(-1, 2):
         row_n: int = y + i
-        for j in range(-1,2):
+        for j in range(-1, 2):
             col_n: int = x + j
 
             # Excludes the centre of the square
@@ -117,8 +127,9 @@ def determine_square_grid_in_list(x: int, y: int,
 
 
 def create_regex(valid_char: str) -> str:
-    '''Creates a raw expression for regex that only accpets certain single characters.'''
-    return rf"^[{valid_char}]$"
+    '''Creates a raw expression for regex that only accepts 
+    certain single characters, excluding "End of string" characters.'''
+    return rf"^[{valid_char}]\Z$"
 
 
 def get_full_directory(slot_number: int, data_name: str) -> str:
@@ -181,7 +192,7 @@ def choose_new_save_slot() -> int:
         if save_slot_choice in written_slots:
             confirmation_choice: str = validate_input(f"Are you sure? This will overwrite save "
                                                  f"slot {save_slot_choice}. "
-                                                 "Your choice (y/n)? ", r"^[y|n]$")
+                                                 "Your choice (y/n)? ", r"^[y|n]\Z$")
             if confirmation_choice == "n":
                 print(f"You chose not to overwrite save slot {save_slot_choice}")
                 continue
@@ -217,7 +228,7 @@ def initialize_game(game_map_in, current_map_in, player_in) -> None:
     global current_save_slot
 
     current_save_slot = choose_new_save_slot()
-    name: str = validate_input("Greetings, miner! What is your name? ", r"^.+$")
+    name: str = validate_input("Greetings, miner! What is your name? ", r"^.+\Z$")
 
     # initialise map
     game_map_in.clear()
@@ -242,7 +253,7 @@ def initialize_game(game_map_in, current_map_in, player_in) -> None:
     player_in['silver'] = 0
     player_in['gold'] = 0
     player_in['GP'] = 0
-    player_in['day'] = 1 # changed from 0
+    player_in['day'] = 1
     player_in['steps'] = 0
     player_in['turns'] = TURNS_PER_DAY
 
@@ -289,7 +300,7 @@ def draw_view(map_in, player_in) -> None:
     for i in range(-1, 2):
         row_n: int = y + i
         view_to_print += "|"
-        for j in range(-1,2):
+        for j in range(-1, 2):
             col_n: int = x + j
 
             is_at_player_position: bool = are_equal(y1=y, y2=row_n, x1=x, x2=col_n)
@@ -487,6 +498,8 @@ def set_prices() -> None:
 def sell_ores(player_in) -> bool:
     '''Sells ores. Checks if player has won the game.
     Returns bool value that specifies whether to return to main menu or not.'''
+    new_day(player_in=player_in)
+
     have_sold_stuff: bool = False
     for mineral in minerals:
         if player_in[mineral] > 0:
@@ -605,7 +618,6 @@ def movement_in_mine(mine_menu_choice_input: str, player_in, game_map_in, curren
         elif square_stepped == "T":
             # If you step on the
             # 'T' square at (0, 0), you will return to town
-            new_day(player_in=player_in)
             print("You returned to town.")
             return True
 
@@ -616,10 +628,8 @@ def movement_in_mine(mine_menu_choice_input: str, player_in, game_map_in, curren
         print("You can't carry any more, so you can't go that way.\n"
             "You are exhausted.\n"
             "You place your portal stone here and zap back to town.")
-        new_day(player_in=player_in)
         return True
     if player_in["turns"] == 0:
-        new_day(player_in=player_in)
         print("You are exhausted.\n"
             "You place your portal stone here and zap back to town.")
         current_map_in[player_in["y"]][player_in["x"]] = "P"
@@ -636,7 +646,7 @@ def main_menu(game_map_in, current_map_in, player_in) -> bool:
     global current_save_slot
     while True:
         show_main_menu()
-        main_menu_choice: str = validate_input("Your choice? ",r"^[n|l|q]$")
+        main_menu_choice: str = validate_input("Your choice? ",r"^[n|l|q]\Z$")
 
         if main_menu_choice == "n":
             initialize_game(game_map_in=game_map_in, current_map_in=current_map_in,
@@ -673,10 +683,10 @@ def shop_menu(player_in) -> None:
     while True:
         if player_in["pickaxe_level"] <= len(pickaxe_prices):
             show_shop_menu(show_pickaxes=True, player_in=player_in)
-            shop_menu_choice: str = validate_input("Your choice? ", r"^[p|b|l]$")
+            shop_menu_choice: str = validate_input("Your choice? ", r"^[p|b|l]\Z$")
         else:
             show_shop_menu(show_pickaxes=False, player_in=player_in)
-            shop_menu_choice: str = validate_input("Your choice? ", r"^[b|l]$")
+            shop_menu_choice: str = validate_input("Your choice? ", r"^[b|l]\Z$")
         if shop_menu_choice == "p":
             pickaxe_price: int = pickaxe_prices[player_in["pickaxe_level"]-1]
             if player_in["GP"] >= pickaxe_price:
@@ -685,6 +695,8 @@ def shop_menu(player_in) -> None:
                 player_in["valid_minable_ores"] += minerals[player_in['pickaxe_level']-1][0].upper()
                 print("Congratulations! "
                       f"You can now mine {minerals[player_in['pickaxe_level']-1]}!")
+            else:
+                print("You don't have enough GP!")
         elif shop_menu_choice == "b":
             price: int = player_in["capacity"] * 2
             if player_in["GP"] >= price:
@@ -702,7 +714,7 @@ def mine_menu(player_in, game_map_in, current_map_in) -> bool:
     Return bool value specifies whether to return to main menu or not.'''
     while True:
         show_mine_menu(player_in=player_in)
-        mine_menu_choice: str = validate_input("Action? ", r"^[w|a|s|d|m|i|p|q]$")
+        mine_menu_choice: str = validate_input("Action? ", r"^[w|a|s|d|m|i|p|q]\Z$")
         if mine_menu_choice in "wasd":
             return_to_town_menu: bool = movement_in_mine(mine_menu_choice_input=mine_menu_choice,
                                                          player_in=player_in,
@@ -730,7 +742,7 @@ def town_menu(player_in, game_map_in, current_map_in) -> None:
             break
 
         show_town_menu(player_in=player_in)
-        town_menu_choice: str = validate_input("Your choice? ", r"^[b|i|m|e|v|q]$")
+        town_menu_choice: str = validate_input("Your choice? ", r"^[b|i|m|e|v|q]\Z$")
 
         if town_menu_choice == "b":
             shop_menu(player_in=player_in)
