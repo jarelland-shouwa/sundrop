@@ -29,12 +29,13 @@ prices['silver'] = (5, 8)
 prices['gold'] = (10, 18)
 
 # NEW
-current_prices: dict[str: int] = {}
-
 pieces_per_node: dict[str: tuple[int]] = {}
 pieces_per_node['copper'] = (1, 5)
 pieces_per_node['silver'] = (1, 3)
 pieces_per_node['gold'] = (1, 2)
+
+# Dynamic
+current_prices: dict[str: int] = {}
 
 current_save_slot: int = 1 # Needs to be globalised
 SAVE_SLOT_QUANTITY: int = 5
@@ -213,7 +214,9 @@ def load_map(filename: str, map_struct: list) -> None:
 
 
 def initialize_game(game_map_in, current_map_in, player_in) -> None:
-    '''Initiliases game_map, current_map and player information'''
+    '''Initiliases game_map, current_map and player information
+    Parameters:
+    - game_map_in : game map structure (originally named game_map)'''
     global current_save_slot
 
     current_save_slot = choose_new_save_slot()
@@ -490,10 +493,10 @@ def sell_ores(player_in) -> bool:
     have_sold_stuff: bool = False
     for mineral in minerals:
         if player_in[mineral] > 0:
-            print(current_prices)
-            GP_sold: int = player_in[mineral] * current_prices[mineral]
-            print(f"You sell {player_in[mineral]} {mineral} ore for {GP_sold} GP.")
-            player_in["GP"] += GP_sold
+            # print(current_prices)
+            gp_sold: int = player_in[mineral] * current_prices[mineral]
+            print(f"You sell {player_in[mineral]} {mineral} ore for {gp_sold} GP.")
+            player_in["GP"] += gp_sold
             player_in[mineral] = 0
             have_sold_stuff = True
     if have_sold_stuff:
@@ -605,7 +608,6 @@ def movement_in_mine(mine_menu_choice_input: str, player_in, game_map_in, curren
         elif square_stepped == "T":
             # If you step on the
             # 'T' square at (0, 0), you will return to town
-            new_day(player_in=player_in)
             print("You returned to town.")
             return True
 
@@ -616,10 +618,8 @@ def movement_in_mine(mine_menu_choice_input: str, player_in, game_map_in, curren
         print("You can't carry any more, so you can't go that way.\n"
             "You are exhausted.\n"
             "You place your portal stone here and zap back to town.")
-        new_day(player_in=player_in)
         return True
     if player_in["turns"] == 0:
-        new_day(player_in=player_in)
         print("You are exhausted.\n"
             "You place your portal stone here and zap back to town.")
         current_map_in[player_in["y"]][player_in["x"]] = "P"
@@ -685,6 +685,8 @@ def shop_menu(player_in) -> None:
                 player_in["valid_minable_ores"] += minerals[player_in['pickaxe_level']-1][0].upper()
                 print("Congratulations! "
                       f"You can now mine {minerals[player_in['pickaxe_level']-1]}!")
+            else:
+                print("You don't have enough GP!")
         elif shop_menu_choice == "b":
             price: int = player_in["capacity"] * 2
             if player_in["GP"] >= price:
@@ -709,6 +711,7 @@ def mine_menu(player_in, game_map_in, current_map_in) -> bool:
                                                          game_map_in=game_map_in,
                                                          current_map_in=current_map_in)
             if return_to_town_menu:
+                new_day(player_in=player_in)
                 return False
         elif mine_menu_choice == "m":
             draw_map(map_in=current_map_in, in_town=False)
