@@ -49,7 +49,7 @@ WASD_TO_DIRECTION_AND_MOVE_VALUE: dict[str, dict[str, str | int]]= {
 SAVE_SLOT_DIRECTORY_PREFIX: str = "saves/save_slot"
 # E.g. saves/save_slot_1 (to be done by get_save_slot_dir)
 
-game_state: str = 'main'
+game_state: str = "main" # can be "main", "exit", "town", "mine"
 
 # ------------------------- GENERAL Functions -------------------------
 
@@ -431,7 +431,7 @@ def load_game(save_slot_number: int, game_map_in: list[list[str]],
     -------
     bool
         Indicates if a (saved) game can be loaded.
-    """    
+    """
     try:
         # load map
         load_map(filename=get_full_directory(slot_number=save_slot_number, data_name="map"),
@@ -524,7 +524,8 @@ def show_town_menu(player_in: dict[str, str | int]) -> None:
     ----------
     player_in : dict[str, str  |  int]
         input for GLOBAL player (originally named player)
-    """     
+    """
+
     print()
     print(f"DAY {player_in['day']}")
     print("----- Sundrop Town -----")
@@ -686,8 +687,11 @@ def process_ore_into_backpack(ore_found_input: str, player_in) -> None:
         player_in[mineral_names[ore_found_input]] += remaining_space_in_backpack
 
 
-def movement_in_mine(mine_menu_choice_input: str, player_in, game_map_in, fog_in) -> bool:
+def movement_in_mine(mine_menu_choice_input: str, player_in, game_map_in, fog_in) -> None: # -> bool
     '''Simulates movement in the mine (WASD input in Mine Menu)'''
+
+    global game_state
+
     direction: str = WASD_TO_DIRECTION_AND_MOVE_VALUE[mine_menu_choice_input]["direction"]
     move_value: int = WASD_TO_DIRECTION_AND_MOVE_VALUE[mine_menu_choice_input]["move_value"]
 
@@ -721,7 +725,9 @@ def movement_in_mine(mine_menu_choice_input: str, player_in, game_map_in, fog_in
             # If you step on the
             # 'T' square at (0, 0), you will return to town
             print("You returned to town.")
-            return True
+            game_state = "town"
+            # return True
+            return None
 
         fog_in[player_in["y"]][player_in["x"]] = "M"
 
@@ -730,22 +736,31 @@ def movement_in_mine(mine_menu_choice_input: str, player_in, game_map_in, fog_in
         print("You can't carry any more, so you can't go that way.\n"
             "You are exhausted.\n"
             "You place your portal stone here and zap back to town.")
-        return True
+        game_state = "town"
+        return None
+        # return True
     if player_in["turns"] == 0:
         print("You are exhausted.\n"
             "You place your portal stone here and zap back to town.")
         fog_in[player_in["y"]][player_in["x"]] = "P"
-        return True
+        game_state = "town"
+        return None
+        # return True
 
-    return False
+    # return False
+    return None
 
 # ------------------------- Menu Functions -------------------------
 
 
-def main_menu(game_map_in, fog_in, player_in) -> bool:
+def main_menu(game_map_in, fog_in, player_in) -> None: # -> bool
     '''Simulates the interaction of main menu.
     Return bool value specifies whether to exit program or not.'''
+
     global current_save_slot
+    global game_state
+    game_state = "main"
+
     while True:
         show_main_menu()
         main_menu_choice: str = validate_input("Your choice? ",r"^[n|l|q]$")
@@ -757,7 +772,9 @@ def main_menu(game_map_in, fog_in, player_in) -> bool:
                       game_map_in=game_map_in, fog_in=fog_in, player_in=player_in)
             load_game(save_slot_number=current_save_slot,
                       game_map_in=game_map_in, fog_in=fog_in, player_in=player_in)
-            return True
+            # return True
+            game_state = "town"
+            break
         if main_menu_choice == "l":
             # save_slots_written_already: list[int] = find_written_slots(mode="load")
             save_slots_written_already: list[str] = [str(n) for n in
@@ -776,13 +793,18 @@ def main_menu(game_map_in, fog_in, player_in) -> bool:
                                              fog_in=fog_in, player_in=player_in)
             if not loaded_success:
                 continue
-            return True
+            # return True
+            game_state = "town"
+            break
         if main_menu_choice == "q":
-            return False
+            # return False
+            game_state = "exit"
+            break
 
 
 def shop_menu(player_in) -> None:
     '''Simulates the interaction of shop menu'''
+
     while True:
         if player_in["pickaxe_level"] <= len(pickaxe_prices):
             show_shop_menu(show_pickaxes=True, player_in=player_in)
@@ -812,21 +834,32 @@ def shop_menu(player_in) -> None:
             break
 
 
-def mine_menu(player_in, game_map_in, fog_in) -> None: # bool
+def mine_menu(player_in, game_map_in, fog_in) -> None: # -> bool
     '''Simulates the interaction of mine menu.
     Return bool value specifies whether to return to main menu or not.'''
+
+    global game_state
+    game_state = "mine" # "mine" is not used often now
+
     while True:
         show_mine_menu(player_in=player_in)
         mine_menu_choice: str = validate_input("Action? ", r"^[w|a|s|d|m|i|p|q]$")
         if mine_menu_choice in "wasd":
-            return_to_town_menu: bool = movement_in_mine(mine_menu_choice_input=mine_menu_choice,
-                                                         player_in=player_in,
-                                                         game_map_in=game_map_in,
-                                                         fog_in=fog_in)
-            if return_to_town_menu:
+            # return_to_town_menu: bool = movement_in_mine(mine_menu_choice_input=mine_menu_choice,
+            #                                              player_in=player_in,
+            #                                              game_map_in=game_map_in,
+            #                                              fog_in=fog_in)
+            movement_in_mine(mine_menu_choice_input=mine_menu_choice,
+                             player_in=player_in, game_map_in=game_map_in, fog_in=fog_in)
+            # print(f"game_state = {game_state}")
+            if game_state == "town":
                 new_day(player_in=player_in)
-                # return False
                 break
+            # if return_to_town_menu:
+            #     new_day(player_in=player_in)
+            #     game_state = "town"
+            #     # return False
+            #     break
         elif mine_menu_choice == "m":
             draw_map(map_in=fog_in, in_town=False)
         elif mine_menu_choice == "i":
@@ -837,7 +870,6 @@ def mine_menu(player_in, game_map_in, fog_in) -> None: # bool
             break
         else:
             # return True
-            global game_state
             game_state = "main"
             break
 
@@ -845,6 +877,10 @@ def mine_menu(player_in, game_map_in, fog_in) -> None: # bool
 def town_menu(player_in, game_map_in, fog_in) -> None:
     '''Simulates the interaction of town menu'''
     # print(current_prices)
+
+    global game_state
+    game_state = "town"
+
     while True:
         return_to_main_menu: bool = sell_ores(player_in=player_in)
         if return_to_main_menu:
@@ -866,7 +902,7 @@ def town_menu(player_in, game_map_in, fog_in) -> None:
             # if return_to_main_menu:
             #     break
             mine_menu(player_in=player_in, game_map_in=game_map_in, fog_in=fog_in)
-            global game_state
+
             if game_state == "main":
                 break
         elif town_menu_choice == "v":
@@ -907,13 +943,18 @@ def main():
     print("-----------------------------------------------------------")
 
     while True: # MAIN LOOP
-        continue_from_main: bool = main_menu(game_map_in=game_map,
-                                             fog_in=fog,
-                                             player_in=player) # TRUE = CONTINUE
-        if not continue_from_main:
+        # continue_from_main: bool = main_menu(game_map_in=game_map,
+        #                                      fog_in=fog,
+        #                                      player_in=player) # TRUE = CONTINUE
+        # if not continue_from_main:
+        #     break
+        main_menu(game_map_in=game_map, fog_in=fog, player_in=player)
+        if game_state == "exit":
             break
-
-        town_menu(player_in=player, game_map_in=game_map, fog_in=fog)
+        if game_state == "town":
+            town_menu(player_in=player, game_map_in=game_map, fog_in=fog)
+        else:
+            raise ValueError(f"game_state cannot be {game_state}")
 
     print("Thanks for playing")
 
