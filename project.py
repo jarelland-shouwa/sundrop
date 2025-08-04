@@ -9,7 +9,8 @@ from random import randint
 import os
 import re
 
-player: dict[str: (str, int)] = {}
+player: dict[str, str | int] = {}
+player = {"b": True}
 game_map: list[list[str]] = []
 current_map: list[list[str]] = []
 
@@ -20,27 +21,27 @@ TURNS_PER_DAY: int = 20
 WIN_GP: int = 500
 
 minerals: list[str] = ['copper', 'silver', 'gold']
-mineral_names: dict[str: str] = {'C': 'copper', 'S': 'silver', 'G': 'gold'}
+mineral_names: dict[str, str] = {'C': 'copper', 'S': 'silver', 'G': 'gold'}
 pickaxe_prices: list[int] = [50, 150]
 
-prices: dict[str: tuple[int]] = {}
+prices: dict[str, tuple[int, int]] = {}
 prices['copper'] = (1, 3)
 prices['silver'] = (5, 8)
 prices['gold'] = (10, 18)
 
 # NEW
-pieces_per_node: dict[str: tuple[int]] = {}
+pieces_per_node: dict[str, tuple[int, int]] = {}
 pieces_per_node['copper'] = (1, 5)
 pieces_per_node['silver'] = (1, 3)
 pieces_per_node['gold'] = (1, 2)
 
 # Dynamic
-current_prices: dict[str: int] = {}
+current_prices: dict[str, int] = {}
 
 current_save_slot: int = 1 # Needs to be globalised
 SAVE_SLOT_QUANTITY: int = 5
 
-WASD_TO_DIRECTION_AND_MOVE_VALUE: dict[str: dict[str: str]]= {
+WASD_TO_DIRECTION_AND_MOVE_VALUE: dict[str, dict[str, str | int]]= {
     "w": {"direction": "y", "move_value": -1},
     "a": {"direction": "x", "move_value": -1},
     "s": {"direction": "y", "move_value": 1},
@@ -54,7 +55,20 @@ SAVE_SLOT_DIRECTORY_PREFIX = "saves/save_slot"
 
 # Assumes that input will be a SINGLE LETTER
 def validate_input(message: str, regex: str) -> str:
-    '''Uses a regular expression to validate input.'''
+    """Uses a regular expression to validate input.
+
+    Parameters
+    ----------
+    message : str
+        The prompt message.
+    regex : str
+        A raw string as the regeex.
+
+    Returns
+    -------
+    str
+        The valid user input.
+    """
     while True:
         user_input: str = input(message).lower()
         if re.match(regex, user_input):
@@ -91,8 +105,8 @@ def are_equal(y1: int, y2: int, x1: int, x2: int) -> bool:
 def determine_square_grid_in_list(x: int, y: int,
                                   list_height: int,
                                   list_width: int) -> tuple[
-                                      list[dict[str: int]],
-                                      list[dict[str: int]]]:
+                                      list[dict[str, int]],
+                                      list[dict[str, int]]]:
     # FIXME Currently the invalid_positions output is not being used.
     '''Returns positions that are within a square of side 3 as the (x,y) the centre.
     I.e. positions that are within a Manhattan Distance of 2 units, exclduing (x,y)
@@ -100,8 +114,8 @@ def determine_square_grid_in_list(x: int, y: int,
     Output: valid_positions, invalid_positions
     valid_positions = [pos_dict_1, pos_dict_2, pos_dict_3, ...]
     invalid_positions = [pos_dict_1, pos_dict_2, pos_dict_3, ...]'''
-    valid_positions: list[dict[str: int]] = []
-    invalid_positions: list[dict[str: int]] = []
+    valid_positions: list[dict[str, int]] = []
+    invalid_positions: list[dict[str, int]] = []
     for i in range(-1, 2):
         row_n: int = y + i
         for j in range(-1,2):
@@ -139,11 +153,12 @@ def find_written_slots(mode: str) -> list[int]:
     if mode not in ["save", "load"]:
         raise ValueError(f"{mode} is invalid. Valid: {["save", "load"]}. Please check again.")
 
+    save_slot_listing_text: str = ""
     written_colour, empty_colour = 91, 92
     if mode == "save":
-        save_slot_listing_text = "Select a save slot to save to.\n"
+        save_slot_listing_text: str = "Select a save slot to save to.\n"
     elif mode == "load":
-        save_slot_listing_text = "Select a save slot to load from.\n"
+        save_slot_listing_text: str = "Select a save slot to load from.\n"
         written_colour = 92
         empty_colour = 91
 
@@ -354,15 +369,15 @@ def load_game(save_slot_number: int, game_map_in, current_map_in, player_in) -> 
             data: list[str] = file.read().split("\n")
 
         for datum in data:
-            datum: list[str] = datum.split(",")
+            split_datum: list[str | float | int] = datum.split(",")
             try: # typecasting strings into floats and integers
-                if "." in datum[1]:
-                    datum[1] = float(datum[1])
+                if "." in split_datum[1]:
+                    split_datum[1] = float(split_datum[1])
                 else:
-                    datum[1] = int(datum[1])
-                player_in[datum[0]] = datum[1]
+                    split_datum[1] = int(split_datum[1])
+                player_in[split_datum[0]] = split_datum[1]
             except ValueError: # for strings
-                player_in[datum[0]] = datum[1]
+                player_in[split_datum[0]] = split_datum[1]
 
         # Sets the prices for that day.
         set_prices()
@@ -533,7 +548,7 @@ def valid_move_checker(direction: str, move_value: int, player_in, current_map_i
     player_in["steps"] += 1
 
     # Determines new hypothetical position and square
-    position_to_check: dict[str: int] = {"x": player_in["x"], "y": player_in["y"]}
+    position_to_check: dict[str, int] = {"x": player_in["x"], "y": player_in["y"]}
     position_to_check[direction] += move_value
     # print(f"{position_to_check["x"]}, {position_to_check['y']}")
 
@@ -589,7 +604,7 @@ def movement_in_mine(mine_menu_choice_input: str, player_in, game_map_in, curren
 
         # Update positions within 3x3 square from player;
         # update current_map using game_map (clears fog)
-        positions_to_update: list[dict[str: int]] = determine_square_grid_in_list(x=player_in["x"],
+        positions_to_update: list[dict[str, int]] = determine_square_grid_in_list(x=player_in["x"],
                                                             y=player_in["y"],
                                                             list_height=MAP_HEIGHT,
                                                             list_width=MAP_WIDTH)[0]
@@ -647,13 +662,14 @@ def main_menu(game_map_in, current_map_in, player_in) -> bool:
                       game_map_in=game_map_in, current_map_in=current_map_in, player_in=player_in)
             return True
         if main_menu_choice == "l":
-            save_slots_written_already: list[int] = find_written_slots(mode="load")
+            # save_slots_written_already: list[int] = find_written_slots(mode="load")
+            save_slots_written_already: list[str] = [str(n) for n in
+                                                     find_written_slots(mode="load")]
             if len(save_slots_written_already) == 0:
                 print("There has not been a save slot written to. Please create a new save slot.")
                 continue
 
             separator = "|"
-            save_slots_written_already: list[str] = [str(n) for n in save_slots_written_already]
             regex = separator.join(save_slots_written_already)
             regex = create_regex(valid_char=regex)
 
