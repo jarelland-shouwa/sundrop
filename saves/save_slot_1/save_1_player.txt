@@ -1,4 +1,4 @@
-name,bob
+name,john
 x,0
 y,0
 copper,0

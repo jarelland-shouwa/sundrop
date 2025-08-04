@@ -10,9 +10,8 @@ import os
 import re
 
 player: dict[str, str | int] = {}
-player = {"b": True}
 game_map: list[list[str]] = []
-current_map: list[list[str]] = []
+fog: list[list[str]] = [] # originally named fog
 
 MAP_WIDTH: int = 0
 MAP_HEIGHT: int = 0
@@ -47,8 +46,10 @@ WASD_TO_DIRECTION_AND_MOVE_VALUE: dict[str, dict[str, str | int]]= {
     "s": {"direction": "y", "move_value": 1},
     "d": {"direction": "x", "move_value": 1}}
 
-SAVE_SLOT_DIRECTORY_PREFIX = "saves/save_slot"
+SAVE_SLOT_DIRECTORY_PREFIX: str = "saves/save_slot"
 # E.g. saves/save_slot_1 (to be done by get_save_slot_dir)
+
+game_state: str = 'main'
 
 # ------------------------- GENERAL Functions -------------------------
 
@@ -81,15 +82,14 @@ def validate_input(message: str, regex: str) -> str:
 
 def save_list_to_txt(filename: str, input_list: list) -> None:
     '''Saves a list into a text file.'''
-    save_file_map = open(filename, "w", encoding="utf-8")
-    text_to_write: str = ""
-    for row in input_list:
-        for element in row:
-            text_to_write += element
-        text_to_write += "\n"
-    text_to_write = text_to_write[:len(text_to_write)-1] # remove extra \n
-    save_file_map.write(text_to_write)
-    save_file_map.close()
+    with open(filename, "w", encoding="utf-8") as save_file_map:
+        text_to_write: str = ""
+        for row in input_list:
+            for element in row:
+                text_to_write += element
+            text_to_write += "\n"
+        text_to_write = text_to_write[:len(text_to_write)-1] # remove extra \n
+        save_file_map.write(text_to_write)
 
 
 def is_within(height: int, width: int, x: int, y: int) -> bool:
@@ -205,7 +205,7 @@ def choose_new_save_slot() -> int:
 
     return save_slot_choice
 
-
+# Template
 def load_map(filename: str, map_struct: list) -> None:
     '''
     Loads a map structure (a nested list) from a file.
@@ -219,8 +219,8 @@ def load_map(filename: str, map_struct: list) -> None:
 
     lines: list[str] = map_file.read().split("\n")
     for line in lines:
-        line: list[str] = list(line)
-        map_struct.append(line)
+        row: list[str] = list(line)
+        map_struct.append(row)
 
     MAP_WIDTH = len(map_struct[0])
     MAP_HEIGHT = len(map_struct)
@@ -228,10 +228,27 @@ def load_map(filename: str, map_struct: list) -> None:
     map_file.close()
 
 
-def initialize_game(game_map_in, current_map_in, player_in) -> None:
-    '''Initiliases game_map, current_map and player information
-    Parameters:
-    - game_map_in : game map structure (originally named game_map)'''
+# Template TODO
+# def clear_fog(fog_in, player_in):
+#     """This function clears the fog of war at the 3x3 square around the player"""
+#     pass
+
+
+# Template
+def initialize_game(game_map_in: list[list[str]],
+                    fog_in: list[list[str]], player_in: dict[str, str | int]) -> None:
+    """Initiliases game_map, fog and player information.
+
+    Parameters
+    ----------
+    game_map_in : list[list[str]]
+        input for GLOBAL game map (originally named game_map)
+    fog_in : list[list[str]]
+        input for GLOBAL fog (originally named fog)
+    player_in : dict[str, str  |  int]
+        input for GLOBAL player (originally named player)
+    """
+
     global current_save_slot
 
     current_save_slot = choose_new_save_slot()
@@ -244,14 +261,14 @@ def initialize_game(game_map_in, current_map_in, player_in) -> None:
     except FileNotFoundError:
         print("FileNotFoundError; Please check that the level map exists again.")
 
-    # Create current map WITH fog TODO Create a function that does this
-    current_map_in.clear()
+    # initialise fog TODO Create a function that does this
+    fog_in.clear()
     for _ in range(MAP_HEIGHT):
         row: list[str] = ["?" for _ in range(MAP_WIDTH)]
-        current_map_in.append(row)
-    current_map_in[0][0] = "M"
+        fog_in.append(row)
+    fog_in[0][0] = "M"
 
-    # initialize player
+    # initialise player
     player_in.clear()
     player_in['name'] = name
     player_in['x'] = 0
@@ -270,14 +287,29 @@ def initialize_game(game_map_in, current_map_in, player_in) -> None:
     player_in["valid_minable_ores"] = "C"
     # ^ uses first letters of minerals to check if player can mine
 
+    # clear_fog(fog, player) FIXME
+
     print(f"Pleased to meet you, {name}. Welcome to Sundrop Town!")
 
 
-def draw_map(map_in, in_town: bool) -> None:
-    '''This function draws the entire map, covered by the fog if applicable.
+# Template
+def draw_map(map_in: list[list[str]], in_town: bool) -> None:
+    """This function draws the entire map, covered by the fog if applicable.
     Accounts for special cases:
     1. Player in town
-    2. Player in town & Portal stone placed'''
+    2. Player in town & Portal stone placed
+
+    Parameters
+    ----------
+    map_in : list[list[str]]
+        input for GLOBAL map variable (originally named game_map)
+    in_town : bool
+        tells if player is in town
+    
+    Unused parameters from template
+    -----------------
+    fog, player
+    """
 
     output_text: str = f"\n+{"-"*MAP_WIDTH}+\n"
     for i in range(MAP_HEIGHT):
@@ -296,31 +328,44 @@ def draw_map(map_in, in_town: bool) -> None:
 
     print(output_text)
 
+# Template
+def draw_view(map_in: list[list[str]], player_in: dict[str, str | int]) -> None:
+    """This function draws the 3x3 viewport.
 
-def draw_view(map_in, player_in) -> None:
-    '''This function draws the 3x3 viewport'''
+    Parameters
+    ----------
+    map_in : list[list[str]]
+        input for GLOBAL map variable (originally named game_map)
+    player_in : dict[str, str  |  int]
+        input for GLOBAL player (originally named player)
+    
+    Unused parameters from template
+    -----------------
+    fog
+    """
+
     print(f"DAY {player['day']}")
     x: int = player_in["x"]
     y: int = player_in["y"]
 
-    view_to_print: str = "+---+\n"
+    view: str = "+---+\n"
     for i in range(-1, 2):
         row_n: int = y + i
-        view_to_print += "|"
+        view += "|"
         for j in range(-1,2):
             col_n: int = x + j
 
             is_at_player_position: bool = are_equal(y1=y, y2=row_n, x1=x, x2=col_n)
 
             if is_at_player_position: # Draws player
-                view_to_print += "M"
+                view += "M"
             elif is_within(height=MAP_HEIGHT, width=MAP_WIDTH, x=col_n, y=row_n):
-                view_to_print += map_in[row_n][col_n]
+                view += map_in[row_n][col_n]
             else: # Draws wall of mine
-                view_to_print += "#"
-        view_to_print += "|\n"
-    view_to_print += "+---+"
-    print(view_to_print)
+                view += "#"
+        view += "|\n"
+    view += "+---+"
+    print(view)
 
 
 def get_save_slot_dir(number: int) -> str:
@@ -328,24 +373,37 @@ def get_save_slot_dir(number: int) -> str:
     return f"{SAVE_SLOT_DIRECTORY_PREFIX}_{number}"
 
 
-def save_game(save_slot_number: int, game_map_in, current_map_in, player_in) -> None:
-    '''This function saves the game'''
+# Template
+def save_game(save_slot_number: int, game_map_in: list[list[str]],
+              fog_in: list[list[str]], player_in: dict[str, str | int]) -> None:
+    """This function saves the game.
+
+    Parameters
+    ----------
+    save_slot_number : int
+        Save slot number to save to determined by player.
+    game_map_in : list[list[str]]
+        input for GLOBAL game map (originally named game_map)
+    fog_in : list[list[str]]
+        input for GLOBAL fog (originally named fog)
+    player_in : dict[str, str  |  int]
+        input for GLOBAL player (originally named player)
+    """
+
     # Saving game map
     save_list_to_txt(get_full_directory(slot_number=save_slot_number,
                                         data_name="map"), game_map_in)
 
-    # Saving current map
+    # Saving fog
     save_list_to_txt(get_full_directory(slot_number=save_slot_number,
-                                        data_name="current_map"), current_map_in)
+                                        data_name="fog"), fog_in)
 
-    # save fog TODO
-
-    # Saving player info
+    # Saving player
     with open(get_full_directory(slot_number=save_slot_number, data_name="player"),
               "w", encoding="utf-8") as file:
         text_to_write: str = ""
         for key, value in player_in.items():
-            if isinstance(value, (int, float, str)):
+            if isinstance(value, (int, float, str)): # May need to explain this
                 text_to_write += f"{key},{value}\n"
         text_to_write = text_to_write[:len(text_to_write)-1] # Removes extra \n
         file.write(text_to_write)
@@ -353,14 +411,33 @@ def save_game(save_slot_number: int, game_map_in, current_map_in, player_in) -> 
     print(f"Saved to save slot {save_slot_number}")
 
 
-def load_game(save_slot_number: int, game_map_in, current_map_in, player_in) -> bool:
-    '''This function loads the game.'''
+# Template
+def load_game(save_slot_number: int, game_map_in: list[list[str]],
+              fog_in: list[list[str]], player_in: dict[str, str | int]) -> bool:
+    """This function loads the game.
+
+    Parameters
+    ----------
+    save_slot_number : int
+        Save slot number to load game from.
+    game_map_in : list[list[str]]
+        input for GLOBAL game map (originally named game_map)
+    fog_in : list[list[str]]
+        input for GLOBAL fog (originally named fog)
+    player_in : dict[str, str  |  int]
+        input for GLOBAL player (originally named player)
+
+    Returns
+    -------
+    bool
+        Indicates if a (saved) game can be loaded.
+    """    
     try:
         # load map
         load_map(filename=get_full_directory(slot_number=save_slot_number, data_name="map"),
                   map_struct=game_map_in)
-        load_map(filename=get_full_directory(slot_number=save_slot_number, data_name="current_map"),
-                  map_struct=current_map_in)
+        load_map(filename=get_full_directory(slot_number=save_slot_number, data_name="fog"),
+                  map_struct=fog_in)
 
         # load player
         player_in.clear()
@@ -391,16 +468,27 @@ def load_game(save_slot_number: int, game_map_in, current_map_in, player_in) -> 
 # ------------------------- Functions that show INFORMATION -------------------------
 
 
-def show_information(menu_type: str, player_in) -> None:
-    '''This function shows the information for the player.'''
+# Template
+def show_information(menu_type: str, player_in: dict[str, str | int]) -> None:
+    """This function shows the information for the player.
+
+    Parameters
+    ----------
+    menu_type : str
+        Specifies whether it is "town" or "mine" menu.
+    player_in : dict[str, str  |  int]
+        input for GLOBAL player (originally named player)
+    """
+
     print("\n----- Player Information -----")
     print(f"Name: {player_in["name"]}")
-    assert menu_type in ["town", "mine"], f"menu_type = {menu_type} is wrong. check again"
+    assert menu_type in ["town", "mine"], f"menu_type = {menu_type} is wrong. Check again."
 
     if menu_type == "town":
         print(f"Portal position: {(player_in["x"], player_in["y"])}")
     else:
         print(f"Current position: {(player_in["x"], player_in["y"])}")
+
     print(f"Pickaxe level: {player_in['pickaxe_level']} ({minerals[player_in['pickaxe_level']-1]})")
     if menu_type == "mine":
         minerals.reverse()
@@ -415,8 +503,10 @@ def show_information(menu_type: str, player_in) -> None:
     print("------------------------------")
 
 
+# Template
 def show_main_menu() -> None:
     '''Shows main menu'''
+
     print()
     print("--- Main Menu ----")
     print("(N)ew game")
@@ -426,8 +516,15 @@ def show_main_menu() -> None:
     print("------------------")
 
 
-def show_town_menu(player_in) -> None:
-    '''Shows town menu'''
+# Template
+def show_town_menu(player_in: dict[str, str | int]) -> None:
+    """Shows town menu
+
+    Parameters
+    ----------
+    player_in : dict[str, str  |  int]
+        input for GLOBAL player (originally named player)
+    """     
     print()
     print(f"DAY {player_in['day']}")
     print("----- Sundrop Town -----")
@@ -462,7 +559,7 @@ def show_mine_menu(player_in) -> None:
     print("---------------------------------------------------")
     print(f"{f"DAY {player_in['day']}":^50}")
     print("---------------------------------------------------")
-    draw_view(map_in=current_map, player_in=player_in)
+    draw_view(map_in=fog, player_in=player_in)
     print(f"Turns left: {player_in['turns']} {" "*4} Load: "
           f"{sum_ores_in_backpack(player_in=player_in)} / {player_in["capacity"]} "
           f"{" "*4} Steps: {player_in['steps']}")
@@ -519,7 +616,7 @@ def sell_ores(player_in) -> bool:
     if player_in["GP"] >= WIN_GP:
         show_game_won(player_in=player_in)
         save_game(save_slot_number=current_save_slot,
-                  game_map_in=game_map, current_map_in=current_map, player_in=player_in)
+                  game_map_in=game_map, fog_in=fog, player_in=player_in)
         return True
     return False
 
@@ -534,7 +631,7 @@ def is_ore_minable(ore_found_input: str, player_in) -> bool:
     return False
 
 
-def valid_move_checker(direction: str, move_value: int, player_in, current_map_in) -> bool:
+def valid_move_checker(direction: str, move_value: int, player_in, fog_in) -> bool:
     '''Checks if a move of WASD is valid.
     direction = "x" or "y"
     move_value = -1 or 1'''
@@ -559,7 +656,7 @@ def valid_move_checker(direction: str, move_value: int, player_in, current_map_i
         return False
 
     # Determines new hypothetical square
-    square_to_check: str = current_map_in[position_to_check["y"]][position_to_check["x"]]
+    square_to_check: str = fog_in[position_to_check["y"]][position_to_check["x"]]
 
     # Checks if player's backpack is full and if the square to be stepped on is a mineral
     is_player_backpack_full: bool = sum_ores_in_backpack(player_in=player_in) == player_in["capacity"]
@@ -589,21 +686,21 @@ def process_ore_into_backpack(ore_found_input: str, player_in) -> None:
         player_in[mineral_names[ore_found_input]] += remaining_space_in_backpack
 
 
-def movement_in_mine(mine_menu_choice_input: str, player_in, game_map_in, current_map_in) -> bool:
+def movement_in_mine(mine_menu_choice_input: str, player_in, game_map_in, fog_in) -> bool:
     '''Simulates movement in the mine (WASD input in Mine Menu)'''
     direction: str = WASD_TO_DIRECTION_AND_MOVE_VALUE[mine_menu_choice_input]["direction"]
     move_value: int = WASD_TO_DIRECTION_AND_MOVE_VALUE[mine_menu_choice_input]["move_value"]
 
     if valid_move_checker(direction=direction, move_value=move_value,
-                          player_in=player_in, current_map_in=current_map_in):
+                          player_in=player_in, fog_in=fog_in):
         # print("YAY you can move!")
         # Restore square to be stepped away (was previously covered by player avatar)
-        current_map_in[player_in["y"]][player_in["x"]] = game_map_in[player_in["y"]][player_in["x"]]
+        fog_in[player_in["y"]][player_in["x"]] = game_map_in[player_in["y"]][player_in["x"]]
 
         player_in[direction] += move_value # Update player position
 
         # Update positions within 3x3 square from player;
-        # update current_map using game_map (clears fog)
+        # update fog using game_map (clears fog)
         positions_to_update: list[dict[str, int]] = determine_square_grid_in_list(x=player_in["x"],
                                                             y=player_in["y"],
                                                             list_height=MAP_HEIGHT,
@@ -611,12 +708,12 @@ def movement_in_mine(mine_menu_choice_input: str, player_in, game_map_in, curren
         for position in positions_to_update:
             y = position["y"]
             x = position["x"]
-            current_map_in[y][x] = game_map_in[y][x]
+            fog_in[y][x] = game_map_in[y][x]
 
-        square_stepped: str = current_map_in[player_in["y"]][player_in["x"]]
+        square_stepped: str = fog_in[player_in["y"]][player_in["x"]]
 
         if square_stepped in mineral_names: # if an ore was stepped on
-            ore_found: str = current_map_in[player_in["y"]][player_in["x"]]
+            ore_found: str = fog_in[player_in["y"]][player_in["x"]]
             # print(f"Ore found: {ore_found}")
             process_ore_into_backpack(ore_found_input=ore_found, player_in=player_in)
             game_map_in[player_in["y"]][player_in["x"]] = " " # Remove ore vein
@@ -626,7 +723,7 @@ def movement_in_mine(mine_menu_choice_input: str, player_in, game_map_in, curren
             print("You returned to town.")
             return True
 
-        current_map_in[player_in["y"]][player_in["x"]] = "M"
+        fog_in[player_in["y"]][player_in["x"]] = "M"
 
     # Check if player's backpack is full
     if player_in["capacity"] == sum_ores_in_backpack(player_in=player_in):
@@ -637,7 +734,7 @@ def movement_in_mine(mine_menu_choice_input: str, player_in, game_map_in, curren
     if player_in["turns"] == 0:
         print("You are exhausted.\n"
             "You place your portal stone here and zap back to town.")
-        current_map_in[player_in["y"]][player_in["x"]] = "P"
+        fog_in[player_in["y"]][player_in["x"]] = "P"
         return True
 
     return False
@@ -645,7 +742,7 @@ def movement_in_mine(mine_menu_choice_input: str, player_in, game_map_in, curren
 # ------------------------- Menu Functions -------------------------
 
 
-def main_menu(game_map_in, current_map_in, player_in) -> bool:
+def main_menu(game_map_in, fog_in, player_in) -> bool:
     '''Simulates the interaction of main menu.
     Return bool value specifies whether to exit program or not.'''
     global current_save_slot
@@ -654,12 +751,12 @@ def main_menu(game_map_in, current_map_in, player_in) -> bool:
         main_menu_choice: str = validate_input("Your choice? ",r"^[n|l|q]$")
 
         if main_menu_choice == "n":
-            initialize_game(game_map_in=game_map_in, current_map_in=current_map_in,
+            initialize_game(game_map_in=game_map_in, fog_in=fog_in,
                             player_in=player_in)
             save_game(save_slot_number=current_save_slot,
-                      game_map_in=game_map_in, current_map_in=current_map_in, player_in=player_in)
+                      game_map_in=game_map_in, fog_in=fog_in, player_in=player_in)
             load_game(save_slot_number=current_save_slot,
-                      game_map_in=game_map_in, current_map_in=current_map_in, player_in=player_in)
+                      game_map_in=game_map_in, fog_in=fog_in, player_in=player_in)
             return True
         if main_menu_choice == "l":
             # save_slots_written_already: list[int] = find_written_slots(mode="load")
@@ -676,7 +773,7 @@ def main_menu(game_map_in, current_map_in, player_in) -> bool:
             current_save_slot = int(validate_input("Your choice? ", regex))
             loaded_success: bool = load_game(save_slot_number=current_save_slot,
                                              game_map_in=game_map_in,
-                                             current_map_in=current_map_in, player_in=player_in)
+                                             fog_in=fog_in, player_in=player_in)
             if not loaded_success:
                 continue
             return True
@@ -715,7 +812,7 @@ def shop_menu(player_in) -> None:
             break
 
 
-def mine_menu(player_in, game_map_in, current_map_in) -> bool:
+def mine_menu(player_in, game_map_in, fog_in) -> None: # bool
     '''Simulates the interaction of mine menu.
     Return bool value specifies whether to return to main menu or not.'''
     while True:
@@ -725,22 +822,27 @@ def mine_menu(player_in, game_map_in, current_map_in) -> bool:
             return_to_town_menu: bool = movement_in_mine(mine_menu_choice_input=mine_menu_choice,
                                                          player_in=player_in,
                                                          game_map_in=game_map_in,
-                                                         current_map_in=current_map_in)
+                                                         fog_in=fog_in)
             if return_to_town_menu:
                 new_day(player_in=player_in)
-                return False
+                # return False
+                break
         elif mine_menu_choice == "m":
-            draw_map(map_in=current_map_in, in_town=False)
+            draw_map(map_in=fog_in, in_town=False)
         elif mine_menu_choice == "i":
             show_information(menu_type="mine", player_in=player_in)
         elif mine_menu_choice == "p":
             print("You place your portal stone here and zap back to town.")
-            return False
+            # return False
+            break
         else:
-            return True
+            # return True
+            global game_state
+            game_state = "main"
+            break
 
 
-def town_menu(player_in, game_map_in, current_map_in) -> None:
+def town_menu(player_in, game_map_in, fog_in) -> None:
     '''Simulates the interaction of town menu'''
     # print(current_prices)
     while True:
@@ -756,16 +858,20 @@ def town_menu(player_in, game_map_in, current_map_in) -> None:
         elif town_menu_choice == "i":
             show_information(menu_type="town", player_in=player_in)
         elif town_menu_choice == "m":
-            draw_map(map_in=current_map_in, in_town=True)
+            draw_map(map_in=fog_in, in_town=True)
         elif town_menu_choice == "e":
-            return_to_main_menu: bool = mine_menu(player_in=player_in,
-                                                  game_map_in=game_map_in,
-                                                  current_map_in=current_map_in)
-            if return_to_main_menu:
+            # return_to_main_menu: bool = mine_menu(player_in=player_in,
+            #                                       game_map_in=game_map_in,
+            #                                       fog_in=fog_in)
+            # if return_to_main_menu:
+            #     break
+            mine_menu(player_in=player_in, game_map_in=game_map_in, fog_in=fog_in)
+            global game_state
+            if game_state == "main":
                 break
         elif town_menu_choice == "v":
             save_game(save_slot_number=current_save_slot,
-                  game_map_in=game_map_in, current_map_in=current_map_in, player_in=player_in)
+                  game_map_in=game_map_in, fog_in=fog_in, player_in=player_in)
         else:
             break
 
@@ -791,7 +897,7 @@ def main():
             assert False, f"An error occurred while attempting creating {full_dir_path}: {e}"
 
     #--------------------------- MAIN GAME ---------------------------
-    game_state: str = 'main'
+    # game_state: str = 'main'
     print("---------------- Welcome to Sundrop Caves! ----------------")
     print("You spent all your money to get the deed to a mine, a small")
     print("  backpack, a simple pickaxe and a magical portal stone.")
@@ -802,12 +908,12 @@ def main():
 
     while True: # MAIN LOOP
         continue_from_main: bool = main_menu(game_map_in=game_map,
-                                             current_map_in=current_map,
+                                             fog_in=fog,
                                              player_in=player) # TRUE = CONTINUE
         if not continue_from_main:
             break
 
-        town_menu(player_in=player, game_map_in=game_map, current_map_in=current_map)
+        town_menu(player_in=player, game_map_in=game_map, fog_in=fog)
 
     print("Thanks for playing")
 
