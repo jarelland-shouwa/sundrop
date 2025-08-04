@@ -1,5 +1,5 @@
-T               SS     GGG    
-               SSSS      GGG  
+T   CCCCC       SS     GGG    
+     CCCCC     SSSS      GGG  
     CCCC      SSSS      GGG   
              SSSSS  CCC       
       CC       S     CCCC     

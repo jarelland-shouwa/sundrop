@@ -50,28 +50,20 @@ SAVE_SLOT_DIRECTORY_PREFIX: str = "saves/save_slot"
 # E.g. saves/save_slot_1 (to be done by get_save_slot_dir)
 
 game_state: str = "main" # can be "main", "exit", "town", "mine"
+files_to_save: tuple[str, str, str] = ("fog", "map", "player")
 
+TOWN_POSITION = (0, 0)
 # ------------------------- GENERAL Functions -------------------------
 
 
-# Assumes that input will be a SINGLE LETTER
-def validate_input(message: str, regex: str) -> str:
-    """Uses a regular expression to validate input.
+def validate_input(message: str, regex: str, is_single: bool) -> str:
+    """Uses a regular expression to validate input. is_single
+    specifies if the input is a single character (e.g. for menu selections)"""
 
-    Parameters
-    ----------
-    message : str
-        The prompt message.
-    regex : str
-        A raw string as the regeex.
-
-    Returns
-    -------
-    str
-        The valid user input.
-    """
     while True:
-        user_input: str = input(message).lower()
+        user_input: str = input(message)
+        if is_single and re.match(regex, user_input.lower()):
+            return user_input.lower()
         if re.match(regex, user_input):
             return user_input
         if user_input == "":
@@ -82,6 +74,7 @@ def validate_input(message: str, regex: str) -> str:
 
 def save_list_to_txt(filename: str, input_list: list) -> None:
     '''Saves a list into a text file.'''
+
     with open(filename, "w", encoding="utf-8") as save_file_map:
         text_to_write: str = ""
         for row in input_list:
@@ -104,21 +97,25 @@ def are_equal(y1: int, y2: int, x1: int, x2: int) -> bool:
 
 def determine_square_grid_in_list(x: int, y: int,
                                   list_height: int,
-                                  list_width: int) -> tuple[
-                                      list[dict[str, int]],
-                                      list[dict[str, int]]]:
-    # FIXME Currently the invalid_positions output is not being used.
-    '''Returns positions that are within a square of side 3 as the (x,y) the centre.
+                                  list_width: int,
+                                  torch_level: int) -> list[dict[str, int]]:
+    """Returns positions that are within a square of side 3 as the (x,y) the centre.
     I.e. positions that are within a Manhattan Distance of 2 units, exclduing (x,y)
-    
-    Output: valid_positions, invalid_positions
-    valid_positions = [pos_dict_1, pos_dict_2, pos_dict_3, ...]
-    invalid_positions = [pos_dict_1, pos_dict_2, pos_dict_3, ...]'''
+
+    Returns
+    -------
+    list[dict[str, int]]
+        valid_positions; E.g. [pos_dict_1, pos_dict_2, pos_dict_3, ...]
+    """
+
     valid_positions: list[dict[str, int]] = []
-    invalid_positions: list[dict[str, int]] = []
-    for i in range(-1, 2):
+    # invalid_positions: list[dict[str, int]] = []
+
+    sq_range = sq_increment_range(torch_level)
+
+    for i in sq_range:
         row_n: int = y + i
-        for j in range(-1,2):
+        for j in sq_range:
             col_n: int = x + j
 
             # Excludes the centre of the square
@@ -126,20 +123,64 @@ def determine_square_grid_in_list(x: int, y: int,
 
             if is_within(height=list_height, width=list_width, x=col_n, y=row_n) and not is_centre:
                 valid_positions.append({"x": col_n, "y": row_n})
-            else:
-                invalid_positions.append({"x": col_n, "y": row_n})
-    return valid_positions, invalid_positions
+            # else:
+            #     invalid_positions.append({"x": col_n, "y": row_n})
+    return valid_positions
 
 
 def create_regex(valid_char: str) -> str:
-    '''Creates a raw expression for regex that only accpets certain single characters.'''
+    '''Creates a raw expression for regex that only accepts certain single characters.'''
     return rf"^[{valid_char}]$"
 
 
+def get_file_name(slot_number: int, data_name: str) -> str:
+    '''Returns the file name for a txt file to be saved in a save slot.'''
+    return f"save_{slot_number}_{data_name}.txt"
+
+
+def get_save_slot_dir(number: int) -> str:
+    '''Returns save slot directory name based on slot number.'''
+    return f"{SAVE_SLOT_DIRECTORY_PREFIX}_{number}"
+
+
 def get_full_directory(slot_number: int, data_name: str) -> str:
-    '''Retruns the full directory path for a txt file to be saved in a save slot.'''
-    directory_name = get_save_slot_dir(number=slot_number)
-    return f"{directory_name}/save_{slot_number}_{data_name}.txt"
+    '''Returns the full directory path for a txt file to be saved in a save slot.'''
+    directory_name: str = get_save_slot_dir(number=slot_number)
+    file_name: str = get_file_name(slot_number=slot_number, data_name=data_name)
+    return f"{directory_name}/{file_name}"
+
+
+def sq_increment_range(torch_level_in: int) -> range:
+    """Helps in finding the valid positions
+    from centre position in a square.
+    E.g. for side = 3 units, from centre (a, b),
+    with the returned range(-1, 2),
+    for i in range(-1, 2):
+        for j in range(-1, 2):
+            valid position is (a+i, b+j)
+
+    Parameters
+    ----------
+    side_length : int
+        Valid values = {3, 5, ...}
+
+    Returns
+    -------
+    range
+        increment from centre position
+
+    Raises
+    ------
+    ValueError
+        Raised if side_length value is invalid.
+    """
+    side_length = 2 * torch_level_in + 1
+    if not(side_length >= 3 and side_length % 2 == 1):
+        raise ValueError("torch_level_in must be an int x, x >= 1")
+
+    increment = int((side_length - 1) / 2)
+    return range(0-increment, 1+increment)
+
 
 # ------------------------- Initialise-, Load-, Save-related Functions -------------------------
 
@@ -149,7 +190,10 @@ def find_written_slots(mode: str) -> list[int]:
     Checks all of the save slot folders to see if they are empty or not.
     Takes in a mode for different print messages.
     Returns a list of save slots that has data already written to it.
+
+    Mode can be "save", "load".
     '''
+
     if mode not in ["save", "load"]:
         raise ValueError(f"{mode} is invalid. Valid: {["save", "load"]}. Please check again.")
 
@@ -165,15 +209,18 @@ def find_written_slots(mode: str) -> list[int]:
     written_slots: list[int] = []
     for i in range(1, SAVE_SLOT_QUANTITY+1):
         try:
-            directory: list[str] = os.listdir(get_save_slot_dir(number=i))
+            files_in_dir: list[str] = os.listdir(get_save_slot_dir(number=i))
         except FileNotFoundError:
             assert False, f"\033[91m{f"Slot {i}: EMPTY ; FileNotFoundError; Please check that this folder has been created."}\033[00m"
         else:
-            if len(directory) != 0:
-                # TODO check that exact files with
-                # naming conventions are included (to account for deleted fies)
+            if files_in_dir == [get_file_name(i, name) for name in files_to_save]: # FIXME Works for len = 3.
+                # If correct files are present but an extra file exists, this conditions fails.
                 written_slots.append(i)
                 save_slot_listing_text += f"\033[{written_colour}m{f"Slot {i}: HAS BEEN WRITTEN TO\n"}\033[00m"
+            elif 0 < len(files_in_dir) < len(files_to_save) and mode == "load":
+                save_slot_listing_text += f"\033[{empty_colour}m{f"Slot {i}: Incorrect number of files present. Check files again.\n"}\033[00m"
+            elif len(files_in_dir) == len(files_to_save) and mode == "load":
+                save_slot_listing_text += f"\033[{empty_colour}m{f"Slot {i}: Check files again. Could be file name or type of file issue.\n"}\033[00m"
             else:
                 save_slot_listing_text += f"\033[{empty_colour}m{f"Slot {i}: EMPTY ; No files in save folder\n"}\033[00m"
 
@@ -183,7 +230,14 @@ def find_written_slots(mode: str) -> list[int]:
 
 
 def choose_new_save_slot() -> int:
-    '''Allows choosing of save slot to begin a NEW game. Returns save slot choice'''
+    """Allows choosing of save slot to begin a NEW game.
+
+    Returns
+    -------
+    int
+        save slot choice
+    """
+
     written_slots: list[int] = find_written_slots(mode="save")
 
     # Creating regex for input validation based on number of save slots.
@@ -193,11 +247,11 @@ def choose_new_save_slot() -> int:
 
     # Asking user for desired save slot choice
     while True:
-        save_slot_choice: int = int(validate_input("Your choice? ", regex))
+        save_slot_choice: int = int(validate_input("Your choice? ", regex, True))
         if save_slot_choice in written_slots:
             confirmation_choice: str = validate_input(f"Are you sure? This will overwrite save "
                                                  f"slot {save_slot_choice}. "
-                                                 "Your choice (y/n)? ", r"^[y|n]$")
+                                                 "Your choice (y/n)? ", r"^[y|n]$", True)
             if confirmation_choice == "n":
                 print(f"You chose not to overwrite save slot {save_slot_choice}")
                 continue
@@ -205,27 +259,26 @@ def choose_new_save_slot() -> int:
 
     return save_slot_choice
 
+
 # Template
 def load_map(filename: str, map_struct: list) -> None:
     '''
     Loads a map structure (a nested list) from a file.
     Updates MAP_WIDTH and MAP_HEIGHT.
     Saves data to map_struct.'''
-    map_file = open(filename, 'r', encoding="utf-8")
     global MAP_WIDTH
     global MAP_HEIGHT
 
-    map_struct.clear()
+    with open(filename, 'r', encoding="utf-8") as map_file:
+        map_struct.clear()
 
-    lines: list[str] = map_file.read().split("\n")
-    for line in lines:
-        row: list[str] = list(line)
-        map_struct.append(row)
+        lines: list[str] = map_file.read().split("\n")
+        for line in lines:
+            row: list[str] = list(line)
+            map_struct.append(row)
 
-    MAP_WIDTH = len(map_struct[0])
-    MAP_HEIGHT = len(map_struct)
-
-    map_file.close()
+        MAP_WIDTH = len(map_struct[0])
+        MAP_HEIGHT = len(map_struct)
 
 
 # Template TODO
@@ -252,7 +305,7 @@ def initialize_game(game_map_in: list[list[str]],
     global current_save_slot
 
     current_save_slot = choose_new_save_slot()
-    name: str = validate_input("Greetings, miner! What is your name? ", r"^.+$")
+    name: str = validate_input("Greetings, miner! What is your name? ", r"^.+$", False)
 
     # initialise map
     game_map_in.clear()
@@ -285,6 +338,7 @@ def initialize_game(game_map_in: list[list[str]],
     player_in['capacity'] = 10
     player_in["pickaxe_level"] = 1
     player_in["valid_minable_ores"] = "C"
+    player_in["torch_level"] = 1
     # ^ uses first letters of minerals to check if player can mine
 
     # clear_fog(fog, player) FIXME
@@ -315,7 +369,7 @@ def draw_map(map_in: list[list[str]], in_town: bool) -> None:
     for i in range(MAP_HEIGHT):
         row_text: str = ""
         for j in range(MAP_WIDTH):
-            if in_town and (i,j) == (0, 0): # Special case 1; # hard coded town position
+            if in_town and (i,j) == TOWN_POSITION: # Special case 1
                 row_text += "M"
                 continue
             if in_town and map_in[i][j] == "M": # Special case 2
@@ -328,9 +382,10 @@ def draw_map(map_in: list[list[str]], in_town: bool) -> None:
 
     print(output_text)
 
+
 # Template
 def draw_view(map_in: list[list[str]], player_in: dict[str, str | int]) -> None:
-    """This function draws the 3x3 viewport.
+    """This function draws the 3x3 viewport. (adjusted by torch level)
 
     Parameters
     ----------
@@ -340,19 +395,20 @@ def draw_view(map_in: list[list[str]], player_in: dict[str, str | int]) -> None:
         input for GLOBAL player (originally named player)
     
     Unused parameters from template
-    -----------------
+    -------------------------------
     fog
     """
 
     print(f"DAY {player['day']}")
     x: int = player_in["x"]
     y: int = player_in["y"]
+    sq_range = sq_increment_range(player_in["torch_level"])
 
     view: str = "+---+\n"
-    for i in range(-1, 2):
+    for i in sq_range:
         row_n: int = y + i
         view += "|"
-        for j in range(-1,2):
+        for j in sq_range:
             col_n: int = x + j
 
             is_at_player_position: bool = are_equal(y1=y, y2=row_n, x1=x, x2=col_n)
@@ -366,11 +422,6 @@ def draw_view(map_in: list[list[str]], player_in: dict[str, str | int]) -> None:
         view += "|\n"
     view += "+---+"
     print(view)
-
-
-def get_save_slot_dir(number: int) -> str:
-    '''Returns save slot directory name based on slot number.'''
-    return f"{SAVE_SLOT_DIRECTORY_PREFIX}_{number}"
 
 
 # Template
@@ -446,15 +497,22 @@ def load_game(save_slot_number: int, game_map_in: list[list[str]],
             data: list[str] = file.read().split("\n")
 
         for datum in data:
-            split_datum: list[str | float | int] = datum.split(",")
-            try: # typecasting strings into floats and integers
-                if "." in split_datum[1]:
-                    split_datum[1] = float(split_datum[1])
-                else:
-                    split_datum[1] = int(split_datum[1])
-                player_in[split_datum[0]] = split_datum[1]
-            except ValueError: # for strings
-                player_in[split_datum[0]] = split_datum[1]
+            split_datum: list[str] = datum.split(",")
+            key, value = split_datum[0], split_datum[1]
+            try: # For ints only
+                value = int(value)
+            except ValueError:
+                pass
+            player_in[key] = value
+            # split_datum: list[str | int] = datum.split(",")
+            # try: # typecasting strings into floats and integers
+            #     if "." in split_datum[1]:
+            #         split_datum[1] = float(split_datum[1])
+            #     else:
+            #         split_datum[1] = int(split_datum[1])
+            #     player_in[split_datum[0]] = split_datum[1]
+            # except ValueError: # for strings
+            #     player_in[split_datum[0]] = split_datum[1]
 
         # Sets the prices for that day.
         set_prices()
@@ -708,7 +766,7 @@ def movement_in_mine(mine_menu_choice_input: str, player_in, game_map_in, fog_in
         positions_to_update: list[dict[str, int]] = determine_square_grid_in_list(x=player_in["x"],
                                                             y=player_in["y"],
                                                             list_height=MAP_HEIGHT,
-                                                            list_width=MAP_WIDTH)[0]
+                                                            list_width=MAP_WIDTH, torch_level=player_in["torch_level"])
         for position in positions_to_update:
             y = position["y"]
             x = position["x"]
@@ -763,7 +821,7 @@ def main_menu(game_map_in, fog_in, player_in) -> None: # -> bool
 
     while True:
         show_main_menu()
-        main_menu_choice: str = validate_input("Your choice? ",r"^[n|l|q]$")
+        main_menu_choice: str = validate_input("Your choice? ", r"^[n|l|q]$", True)
 
         if main_menu_choice == "n":
             initialize_game(game_map_in=game_map_in, fog_in=fog_in,
@@ -787,7 +845,7 @@ def main_menu(game_map_in, fog_in, player_in) -> None: # -> bool
             regex = separator.join(save_slots_written_already)
             regex = create_regex(valid_char=regex)
 
-            current_save_slot = int(validate_input("Your choice? ", regex))
+            current_save_slot = int(validate_input("Your choice? ", regex, True))
             loaded_success: bool = load_game(save_slot_number=current_save_slot,
                                              game_map_in=game_map_in,
                                              fog_in=fog_in, player_in=player_in)
@@ -808,10 +866,10 @@ def shop_menu(player_in) -> None:
     while True:
         if player_in["pickaxe_level"] <= len(pickaxe_prices):
             show_shop_menu(show_pickaxes=True, player_in=player_in)
-            shop_menu_choice: str = validate_input("Your choice? ", r"^[p|b|l]$")
+            shop_menu_choice: str = validate_input("Your choice? ", r"^[p|b|l]$", True)
         else:
             show_shop_menu(show_pickaxes=False, player_in=player_in)
-            shop_menu_choice: str = validate_input("Your choice? ", r"^[b|l]$")
+            shop_menu_choice: str = validate_input("Your choice? ", r"^[b|l]$", True)
         if shop_menu_choice == "p":
             pickaxe_price: int = pickaxe_prices[player_in["pickaxe_level"]-1]
             if player_in["GP"] >= pickaxe_price:
@@ -843,7 +901,7 @@ def mine_menu(player_in, game_map_in, fog_in) -> None: # -> bool
 
     while True:
         show_mine_menu(player_in=player_in)
-        mine_menu_choice: str = validate_input("Action? ", r"^[w|a|s|d|m|i|p|q]$")
+        mine_menu_choice: str = validate_input("Action? ", r"^[w|a|s|d|m|i|p|q]$", True)
         if mine_menu_choice in "wasd":
             # return_to_town_menu: bool = movement_in_mine(mine_menu_choice_input=mine_menu_choice,
             #                                              player_in=player_in,
@@ -887,7 +945,7 @@ def town_menu(player_in, game_map_in, fog_in) -> None:
             break
 
         show_town_menu(player_in=player_in)
-        town_menu_choice: str = validate_input("Your choice? ", r"^[b|i|m|e|v|q]$")
+        town_menu_choice: str = validate_input("Your choice? ", r"^[b|i|m|e|v|q]$", True)
 
         if town_menu_choice == "b":
             shop_menu(player_in=player_in)
@@ -913,7 +971,13 @@ def town_menu(player_in, game_map_in, fog_in) -> None:
 
 
 def main():
-    '''Main game'''
+    """Main game
+
+    Raises
+    ------
+    ValueError
+        Raised if value of game_state is invalid.
+    """
     #--------------------------- Creating the save slot folders ---------------------------
     # Ensures they exist in working dir.
     # Source: https://www.geeksforgeeks.org/python/create-a-directory-in-python/
@@ -949,6 +1013,7 @@ def main():
         # if not continue_from_main:
         #     break
         main_menu(game_map_in=game_map, fog_in=fog, player_in=player)
+
         if game_state == "exit":
             break
         if game_state == "town":
