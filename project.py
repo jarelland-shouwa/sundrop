@@ -454,8 +454,7 @@ def save_game(save_slot_number: int, game_map_in: list[list[str]],
               "w", encoding="utf-8") as file:
         text_to_write: str = ""
         for key, value in player_in.items():
-            if isinstance(value, (int, float, str)): # May need to explain this
-                text_to_write += f"{key},{value}\n"
+            text_to_write += f"{key},{value}\n"
         text_to_write = text_to_write[:len(text_to_write)-1] # Removes extra \n
         file.write(text_to_write)
 
@@ -483,10 +482,13 @@ def load_game(save_slot_number: int, game_map_in: list[list[str]],
     bool
         Indicates if a (saved) game can be loaded.
     """
+
     try:
         # load map
         load_map(filename=get_full_directory(slot_number=save_slot_number, data_name="map"),
                   map_struct=game_map_in)
+
+        # load fog
         load_map(filename=get_full_directory(slot_number=save_slot_number, data_name="fog"),
                   map_struct=fog_in)
 
@@ -536,11 +538,18 @@ def show_information(menu_type: str, player_in: dict[str, str | int]) -> None:
         Specifies whether it is "town" or "mine" menu.
     player_in : dict[str, str  |  int]
         input for GLOBAL player (originally named player)
+
+    Raises
+    ------
+    ValueError
+        Raised if value of menu_type is invalid
     """
+
+    if menu_type not in ["town", "mine"]:
+        raise ValueError(f"menu_type = {menu_type} is wrong. Check again.")
 
     print("\n----- Player Information -----")
     print(f"Name: {player_in["name"]}")
-    assert menu_type in ["town", "mine"], f"menu_type = {menu_type} is wrong. Check again."
 
     if menu_type == "town":
         print(f"Portal position: {(player_in["x"], player_in["y"])}")
@@ -569,7 +578,7 @@ def show_main_menu() -> None:
     print("--- Main Menu ----")
     print("(N)ew game")
     print("(L)oad saved game")
-    # print("(H)igh scores")
+    # print("(H)igh scores") TODO
     print("(Q)uit")
     print("------------------")
 
@@ -596,8 +605,18 @@ def show_town_menu(player_in: dict[str, str | int]) -> None:
     print("------------------------")
 
 
-def show_shop_menu(show_pickaxes: bool, player_in) -> None: # gp: int parameter
-    '''Shows shop menu'''
+def show_shop_menu(show_pickaxes: bool,
+                   player_in: dict[str, str | int]) -> None:
+    """Shows shop menu
+
+    Parameters
+    ----------
+    show_pickaxes : bool
+        Indicates whether to show pick axe price
+    player_in : dict[str, str  |  int]
+        input for GLOBAL player (originally named player)
+    """
+
     print("\n----------------------- Shop Menu -------------------------")
     if show_pickaxes:
         pickaxe_price: int = pickaxe_prices[player_in["pickaxe_level"]-1]
@@ -613,11 +632,18 @@ def show_shop_menu(show_pickaxes: bool, player_in) -> None: # gp: int parameter
     print("-----------------------------------------------------------")
 
 
-def show_mine_menu(player_in) -> None:
-    '''Shows mine menu'''
-    print("---------------------------------------------------")
-    print(f"{f"DAY {player_in['day']}":^50}")
-    print("---------------------------------------------------")
+def show_mine_menu(player_in: dict[str, str | int]) -> None:
+    """Shows mine menu
+
+    Parameters
+    ----------
+    player_in : dict[str, str  |  int]
+        input for GLOBAL player (originally named player)
+    """
+
+    # print("---------------------------------------------------")
+    # print(f"{f"DAY {player_in['day']}":^50}")
+    # print("---------------------------------------------------")
     draw_view(map_in=fog, player_in=player_in)
     print(f"Turns left: {player_in['turns']} {" "*4} Load: "
           f"{sum_ores_in_backpack(player_in=player_in)} / {player_in["capacity"]} "
@@ -626,8 +652,15 @@ def show_mine_menu(player_in) -> None:
     print("(M)ap, (I)nformation, (P)ortal, (Q)uit to main menu")
 
 
-def show_game_won(player_in) -> None:
-    '''Shows game win information'''
+def show_game_won(player_in: dict[str, str | int]) -> None:
+    """Shows game win information
+
+    Parameters
+    ----------
+    player_in : dict[str, str  |  int]
+        input for GLOBAL player (originally named player)
+    """
+
     print("-------------------------------------------------------------")
     print(f"Woo-hoo! Well done, Cher, you have {player_in["GP"]} GP!")
     print("You now have enough to retire and play video games every day.")
@@ -639,15 +672,34 @@ def show_game_won(player_in) -> None:
 # ------------------------- Various functions that are used in Menus -------------------------
 
 
-def new_day(player_in) -> None:
-    '''When a new day passes, does the following.'''
+def new_day(player_in: dict[str, str | int]) -> None:
+    """When a new day passes, does the following.
+
+    Parameters
+    ----------
+    player_in : dict[str, str  |  int]
+        input for GLOBAL player (originally named player)
+    """
+
     player_in["turns"] = TURNS_PER_DAY
     player_in["day"] += 1
     set_prices()
 
 
-def sum_ores_in_backpack(player_in) -> int:
-    '''Returns the sum of the quantity of minerals in backpack.'''
+def sum_ores_in_backpack(player_in: dict[str, str | int]) -> int:
+    """Returns the sum of the quantity of minerals in backpack.
+
+    Parameters
+    ----------
+    player_in : dict[str, str  |  int]
+        input for GLOBAL player (originally named player)
+
+    Returns
+    -------
+    int
+        number of ores in backpack
+    """
+
     return sum(player_in[mineral] for mineral in minerals)
 
 
@@ -658,10 +710,23 @@ def set_prices() -> None:
         current_prices[mineral] = randint(prices[mineral][0], prices[mineral][1])
 
 
-def sell_ores(player_in) -> bool:
-    '''Sells ores. Checks if player has won the game.
-    Returns bool value that specifies whether to return to main menu or not.'''
+def sell_ores(player_in: dict[str, str | int]) -> bool:
+    """Sells ores. Checks if player has won the game.
+
+    Parameters
+    ----------
+    player_in : dict[str, str  |  int]
+        input for GLOBAL player (originally named player)
+
+    Returns
+    -------
+    bool
+        Specifies whether to return to main menu or not.
+    """
+
     have_sold_stuff: bool = False
+
+    # Sell ores
     for mineral in minerals:
         if player_in[mineral] > 0:
             # print(current_prices)
@@ -670,6 +735,7 @@ def sell_ores(player_in) -> bool:
             player_in["GP"] += gp_sold
             player_in[mineral] = 0
             have_sold_stuff = True
+
     if have_sold_stuff:
         print(f"You now have {player_in["GP"]} GP!")
     if player_in["GP"] >= WIN_GP:
@@ -680,25 +746,64 @@ def sell_ores(player_in) -> bool:
     return False
 
 
-def is_ore_minable(ore_found_input: str, player_in) -> bool:
-    '''Checks if the ore found can be mined depending on pickaxe level.'''
+def is_ore_minable(ore_found_input: str, player_in: dict[str, str | int]) -> bool:
+    """Checks if the ore found can be mined depending on pickaxe level.
+
+    Parameters
+    ----------
+    ore_found_input : str
+        Capital letter of ore found
+    player_in : dict[str, str  |  int]
+        input for GLOBAL player (originally named player)
+
+    Returns
+    -------
+    bool
+        Indicates of ore is minable based on pickaxe level.
+    """
+
     if ore_found_input in player_in["valid_minable_ores"]:
-        print("You can mine this!")
+        # print("You can mine this!")
         return True
     print(f"Your pickaxe level ({player_in['pickaxe_level']}) is "
         f"too low, so you cannot mine {mineral_names[ore_found_input]}.")
     return False
 
 
-def valid_move_checker(direction: str, move_value: int, player_in, fog_in) -> bool:
-    '''Checks if a move of WASD is valid.
-    direction = "x" or "y"
-    move_value = -1 or 1'''
+def valid_move_checker(direction: str, move_value: int,
+                       player_in: dict[str, str | int],
+                       fog_in: list[list[str]]) -> bool:
+    """Checks if a WASD move is valid.
+
+    Parameters
+    ----------
+    direction : str
+        direction of movement; can be "x" or "y"
+    move_value : int
+        magnitude of movement; can be -1 or 1
+    player_in : dict[str, str  |  int]
+        input for GLOBAL player (originally named player)
+    fog_in : list[list[str]]
+        input for GLOBAL fog (originally named fog)
+
+    Returns
+    -------
+    bool
+        Indicates if a WASD move is valid.
+
+    Raises
+    ------
+    ValueError
+        Raised if value of direction is not "x" or "y".
+    ValueError
+        Raised if value of direction is not -1 or 1.
+    """
+
     # Input checks
     if direction not in ["x", "y"]:
-        raise ValueError(f"{direction} is an invalid value for direction")
+        raise ValueError(f"{direction} is an invalid value for direction; must be 'x' or 'y'")
     if move_value not in [1,-1]:
-        raise ValueError(f"{move_value} is an invalid value for move_value")
+        raise ValueError(f"{move_value} is an invalid value for move_value; must be 1 or -1")
 
     player_in["turns"] -= 1
     player_in["steps"] += 1
@@ -727,11 +832,20 @@ def valid_move_checker(direction: str, move_value: int, player_in, fog_in) -> bo
     if square_to_check in mineral_names:
         return is_ore_minable(ore_found_input=square_to_check, player_in=player_in)
 
-    return True
+    return True # Move to a non-ore square
 
 
-def process_ore_into_backpack(ore_found_input: str, player_in) -> None:
-    '''Adds the pieces of ore found into the backpack depending on backpack capacity.'''
+def process_ore_into_backpack(ore_found_input: str, player_in: dict[str, str | int]) -> None:
+    """Adds the pieces of ore found into the backpack depending on backpack capacity.
+
+    Parameters
+    ----------
+    ore_found_input : str
+        Capital letter of ore found
+    player_in : dict[str, str  |  int]
+        input for GLOBAL player (originally named player)
+    """
+
     remaining_space_in_backpack: int = player_in["capacity"] - sum_ores_in_backpack(player_in=player_in)
     mineral_name: str = mineral_names[ore_found_input]
     pieces_found: int = randint(pieces_per_node[mineral_name][0], pieces_per_node[mineral_name][1])
@@ -745,8 +859,28 @@ def process_ore_into_backpack(ore_found_input: str, player_in) -> None:
         player_in[mineral_names[ore_found_input]] += remaining_space_in_backpack
 
 
-def movement_in_mine(mine_menu_choice_input: str, player_in, game_map_in, fog_in) -> None: # -> bool
-    '''Simulates movement in the mine (WASD input in Mine Menu)'''
+# STOPPED HERE NOTE
+def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int],
+                     game_map_in: list[list[str]],
+                     fog_in: list[list[str]])-> None: # -> bool FIXME Modulise this
+    """Simulates movement in the mine (WASD input in Mine Menu)
+
+    Parameters
+    ----------
+    mine_menu_choice_input : str
+        User's selection in mine menu.
+    player_in : dict[str, str  |  int]
+        input for GLOBAL player (originally named player)
+    game_map_in : list[list[str]]
+        input for GLOBAL game map (originally named game_map)
+    fog_in : list[list[str]]
+        input for GLOBAL fog (originally named fog)
+
+    Returns
+    -------
+    None
+        To simply exit the function.
+    """
 
     global game_state
 
@@ -899,9 +1033,14 @@ def mine_menu(player_in, game_map_in, fog_in) -> None: # -> bool
     global game_state
     game_state = "mine" # "mine" is not used often now
 
+    print("\n---------------------------------------------------")
+    print(f"{f"DAY {player_in['day']}":^50}")
+    print("---------------------------------------------------")
+
     while True:
         show_mine_menu(player_in=player_in)
         mine_menu_choice: str = validate_input("Action? ", r"^[w|a|s|d|m|i|p|q]$", True)
+        print("\n------------------------------------------------------")
         if mine_menu_choice in "wasd":
             # return_to_town_menu: bool = movement_in_mine(mine_menu_choice_input=mine_menu_choice,
             #                                              player_in=player_in,
