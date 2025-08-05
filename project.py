@@ -11,7 +11,7 @@ import re
 
 player: dict[str, str | int] = {}
 game_map: list[list[str]] = []
-fog: list[list[str]] = [] # originally named fog
+fog: list[list[str]] = []
 
 MAP_WIDTH: int = 0
 MAP_HEIGHT: int = 0
@@ -50,7 +50,7 @@ SAVE_SLOT_DIRECTORY_PREFIX: str = "saves/save_slot"
 # E.g. saves/save_slot_1 (to be done by get_save_slot_dir)
 
 game_state: str = "main" # can be "main", "exit", "town", "mine"
-files_to_save: tuple[str, str, str] = ("fog", "map", "player")
+FILES_TO_SAVE: tuple[str, str, str] = ("fog", "map", "player")
 
 TOWN_POSITION = (0, 0)
 # ------------------------- GENERAL Functions -------------------------
@@ -95,7 +95,7 @@ def are_equal(y1: int, y2: int, x1: int, x2: int) -> bool:
     return x1 == x2 and y1 == y2
 
 
-def determine_square_grid_in_list(x: int, y: int,
+def get_pos_in_square(x: int, y: int,
                                   list_height: int,
                                   list_width: int,
                                   torch_level: int) -> list[dict[str, int]]:
@@ -153,12 +153,15 @@ def get_full_directory(slot_number: int, data_name: str) -> str:
 def sq_increment_range(torch_level_in: int) -> range:
     """Helps in finding the valid positions
     from centre position in a square.
-    E.g. for side = 3 units, from centre (a, b),
+    E.g. for torch_level_in = 1, i.e. side length = 3 units;
+    from centre (a, b),
     with the returned range(-1, 2),
+    we can find all of the valid positions:
+    ```
     for i in range(-1, 2):
         for j in range(-1, 2):
-            valid position is (a+i, b+j)
-
+            valid_position = (a+i, b+j)
+    ```
     Parameters
     ----------
     side_length : int
@@ -203,8 +206,7 @@ def find_written_slots(mode: str) -> list[int]:
         save_slot_listing_text: str = "Select a save slot to save to.\n"
     elif mode == "load":
         save_slot_listing_text: str = "Select a save slot to load from.\n"
-        written_colour = 92
-        empty_colour = 91
+        written_colour, empty_colour = 92, 91
 
     written_slots: list[int] = []
     for i in range(1, SAVE_SLOT_QUANTITY+1):
@@ -213,13 +215,15 @@ def find_written_slots(mode: str) -> list[int]:
         except FileNotFoundError:
             assert False, f"\033[91m{f"Slot {i}: EMPTY ; FileNotFoundError; Please check that this folder has been created."}\033[00m"
         else:
-            if files_in_dir == [get_file_name(i, name) for name in files_to_save]: # FIXME Works for len = 3.
-                # If correct files are present but an extra file exists, this conditions fails.
+            files_needed: set = {get_file_name(i, name) for name in FILES_TO_SAVE}
+
+            # files_in_dir == [get_file_name(i, name) for name in FILES_TO_SAVE]
+            if files_needed.issubset(set(files_in_dir)):
                 written_slots.append(i)
                 save_slot_listing_text += f"\033[{written_colour}m{f"Slot {i}: HAS BEEN WRITTEN TO\n"}\033[00m"
-            elif 0 < len(files_in_dir) < len(files_to_save) and mode == "load":
+            elif 0 < len(files_in_dir) < len(FILES_TO_SAVE) and mode == "load":
                 save_slot_listing_text += f"\033[{empty_colour}m{f"Slot {i}: Incorrect number of files present. Check files again.\n"}\033[00m"
-            elif len(files_in_dir) == len(files_to_save) and mode == "load":
+            elif len(files_in_dir) == len(FILES_TO_SAVE) and mode == "load":
                 save_slot_listing_text += f"\033[{empty_colour}m{f"Slot {i}: Check files again. Could be file name or type of file issue.\n"}\033[00m"
             else:
                 save_slot_listing_text += f"\033[{empty_colour}m{f"Slot {i}: EMPTY ; No files in save folder\n"}\033[00m"
@@ -296,7 +300,7 @@ def clear_fog(game_map_in: list[list[str]], fog_in: list[list[str]],
         input for GLOBAL player (originally named player)
     """
 
-    positions_to_update: list[dict[str, int]] = determine_square_grid_in_list(x=player_in["x"],
+    positions_to_update: list[dict[str, int]] = get_pos_in_square(x=player_in["x"],
                                                             y=player_in["y"],
                                                             list_height=MAP_HEIGHT,
                                                             list_width=MAP_WIDTH,
@@ -359,8 +363,8 @@ def initialize_game(game_map_in: list[list[str]],
     player_in['capacity'] = 10
     player_in["pickaxe_level"] = 1
     player_in["valid_minable_ores"] = "C"
-    player_in["torch_level"] = 1
     # ^ uses first letters of minerals to check if player can mine
+    player_in["torch_level"] = 1
 
     clear_fog(game_map_in=game_map_in, fog_in=fog_in, player_in=player_in)
 
@@ -931,19 +935,20 @@ def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int
 
         fog_in[player_in["y"]][player_in["x"]] = "M"
 
-    # Check if player's backpack is full
-    if player_in["capacity"] == sum_ores_in_backpack(player_in=player_in):
-        print("You can't carry any more, so you can't go that way.\n"
-            "You are exhausted.\n"
-            "You place your portal stone here and zap back to town.")
-        game_state = "town"
-        return None
+    # Check if player's backpack is full (DOES NOT SEEM TO BE NEEDED)
+    # if player_in["capacity"] == sum_ores_in_backpack(player_in=player_in):
+    #     print("You can't carry any more, so you can't go that way.\n"
+    #         "You are exhausted.\n"
+    #         "You place your portal stone here and zap back to town.")
+    #     game_state = "town"
+    #     return None
         # return True
     if player_in["turns"] == 0:
         print("You are exhausted.\n"
             "You place your portal stone here and zap back to town.")
         fog_in[player_in["y"]][player_in["x"]] = "P"
         game_state = "town"
+        # new_day(player_in=player_in)
         return None
         # return True
 
@@ -1103,6 +1108,9 @@ def mine_menu(game_map_in: list[list[str]], fog_in: list[list[str]],
             show_information(menu_type="mine", player_in=player_in)
         elif mine_menu_choice == "p":
             print("You place your portal stone here and zap back to town.")
+            game_state = "town"
+            new_day(player_in=player_in)
+            # new_day(player_in=player_in)
             # return False
             break
         else:
@@ -1160,6 +1168,7 @@ def town_menu(game_map_in: list[list[str]], fog_in: list[list[str]],
             break
 
 
+#--------------------------- Miscellaneous ---------------------------
 def create_save_folders() -> None:
     """Creates save slot folders. Ensures they exist in working directory.
     Source: https://www.geeksforgeeks.org/python/create-a-directory-in-python/
@@ -1169,16 +1178,15 @@ def create_save_folders() -> None:
         full_dir_path: str = get_save_slot_dir(number=i)
         try: # The exceptions are only for debugging
             os.mkdir(full_dir_path)
-            # print(f"Directory '{full_dir_path}' created successfully.")
         except FileExistsError:
-            #print(f"Directory '{full_dir_path}' already exists.")
             pass
         except PermissionError:
-            #print(f"Permission denied: Unable to create '{full_dir_path}'.")
             assert False, f"Permission denied: Unable to create '{full_dir_path}'."
-        except Exception as e:
-            assert False, f"An error occurred while attempting creating {full_dir_path}: {e}"
+        except Exception as exp:
+            assert False, f"An error occurred while attempting creating {full_dir_path}: {exp}"
 
+
+#--------------------------- MAIN GAME ---------------------------
 def main():
     """Main game
 
@@ -1188,7 +1196,6 @@ def main():
         Raised if value of game_state is invalid.
     """
 
-    #--------------------------- MAIN GAME ---------------------------
     create_save_folders()
 
     # game_state: str = 'main'
@@ -1196,7 +1203,7 @@ def main():
     print("You spent all your money to get the deed to a mine, a small")
     print("  backpack, a simple pickaxe and a magical portal stone.")
     print()
-    print("How quickly can you get the 1000 GP you need to retire")
+    print("How quickly can you get the 500 GP you need to retire") # Was 1000 (typo from template)
     print("  and live happily ever after?")
     print("-----------------------------------------------------------")
 
