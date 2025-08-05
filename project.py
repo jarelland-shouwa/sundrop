@@ -924,8 +924,6 @@ def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int
             process_ore_into_backpack(ore_found_input=ore_found, player_in=player_in)
             game_map_in[player_in["y"]][player_in["x"]] = " " # Remove ore vein
         elif square_stepped == "T":
-            # If you step on the
-            # 'T' square at (0, 0), you will return to town
             print("You returned to town.")
             game_state = "town"
             # return True
@@ -956,9 +954,19 @@ def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int
 # ------------------------- Menu Functions -------------------------
 
 
-def main_menu(game_map_in, fog_in, player_in) -> None: # -> bool
-    '''Simulates the interaction of main menu.
-    Return bool value specifies whether to exit program or not.'''
+def main_menu(game_map_in: list[list[str]], fog_in: list[list[str]],
+              player_in: dict[str, str | int]) -> None: # -> bool
+    """Simulates the interaction of main menu.
+
+    Parameters
+    ----------
+    game_map_in : list[list[str]]
+        input for GLOBAL game map (originally named game_map)
+    fog_in : list[list[str]]
+        input for GLOBAL fog (originally named fog)
+    player_in : dict[str, str  |  int]
+        input for GLOBAL player (originally named player)
+    """
 
     global current_save_slot
     global game_state
@@ -1005,16 +1013,26 @@ def main_menu(game_map_in, fog_in, player_in) -> None: # -> bool
             break
 
 
-def shop_menu(player_in) -> None:
-    '''Simulates the interaction of shop menu'''
+def shop_menu(player_in: dict[str, str | int]) -> None:
+    """Simulates the interaction of shop menu
+
+    Parameters
+    ----------
+    player_in : dict[str, str  |  int]
+        input for GLOBAL player (originally named player)
+    """
 
     while True:
+        # Determine valid options
+        options: str = "bl"
+        show_pickaxes: bool = False
+
         if player_in["pickaxe_level"] <= len(pickaxe_prices):
-            show_shop_menu(show_pickaxes=True, player_in=player_in)
-            shop_menu_choice: str = validate_input("Your choice? ", r"^[p|b|l]$", True)
-        else:
-            show_shop_menu(show_pickaxes=False, player_in=player_in)
-            shop_menu_choice: str = validate_input("Your choice? ", r"^[b|l]$", True)
+            options += "p"
+            show_pickaxes = True
+        show_shop_menu(show_pickaxes=show_pickaxes, player_in=player_in)
+        shop_menu_choice: str = validate_input("Your choice? ", create_regex(options), True)
+
         if shop_menu_choice == "p":
             pickaxe_price: int = pickaxe_prices[player_in["pickaxe_level"]-1]
             if player_in["GP"] >= pickaxe_price:
@@ -1037,9 +1055,19 @@ def shop_menu(player_in) -> None:
             break
 
 
-def mine_menu(player_in, game_map_in, fog_in) -> None: # -> bool
-    '''Simulates the interaction of mine menu.
-    Return bool value specifies whether to return to main menu or not.'''
+def mine_menu(game_map_in: list[list[str]], fog_in: list[list[str]],
+              player_in: dict[str, str | int]) -> None: # -> bool
+    """Simulates the interaction of mine menu.
+
+    Parameters
+    ----------
+    game_map_in : list[list[str]]
+        input for GLOBAL game map (originally named game_map)
+    fog_in : list[list[str]]
+        input for GLOBAL fog (originally named fog)
+    player_in : dict[str, str  |  int]
+        input for GLOBAL player (originally named player)
+    """
 
     global game_state
     game_state = "mine" # "mine" is not used often now
@@ -1052,6 +1080,7 @@ def mine_menu(player_in, game_map_in, fog_in) -> None: # -> bool
         show_mine_menu(player_in=player_in)
         mine_menu_choice: str = validate_input("Action? ", r"^[w|a|s|d|m|i|p|q]$", True)
         print("\n------------------------------------------------------")
+
         if mine_menu_choice in "wasd":
             # return_to_town_menu: bool = movement_in_mine(mine_menu_choice_input=mine_menu_choice,
             #                                              player_in=player_in,
@@ -1082,8 +1111,19 @@ def mine_menu(player_in, game_map_in, fog_in) -> None: # -> bool
             break
 
 
-def town_menu(player_in, game_map_in, fog_in) -> None:
-    '''Simulates the interaction of town menu'''
+def town_menu(game_map_in: list[list[str]], fog_in: list[list[str]],
+              player_in: dict[str, str | int]) -> None:
+    """Simulates the interaction of town menu.
+
+    Parameters
+    ----------
+    game_map_in : list[list[str]]
+        input for GLOBAL game map (originally named game_map)
+    fog_in : list[list[str]]
+        input for GLOBAL fog (originally named fog)
+    player_in : dict[str, str  |  int]
+        input for GLOBAL player (originally named player)
+    """    '''Simulates the interaction of town menu'''
     # print(current_prices)
 
     global game_state
@@ -1120,17 +1160,10 @@ def town_menu(player_in, game_map_in, fog_in) -> None:
             break
 
 
-def main():
-    """Main game
-
-    Raises
-    ------
-    ValueError
-        Raised if value of game_state is invalid.
+def create_save_folders() -> None:
+    """Creates save slot folders. Ensures they exist in working directory.
+    Source: https://www.geeksforgeeks.org/python/create-a-directory-in-python/
     """
-    #--------------------------- Creating the save slot folders ---------------------------
-    # Ensures they exist in working dir.
-    # Source: https://www.geeksforgeeks.org/python/create-a-directory-in-python/
 
     for i in range(1, SAVE_SLOT_QUANTITY+1):
         full_dir_path: str = get_save_slot_dir(number=i)
@@ -1146,7 +1179,18 @@ def main():
         except Exception as e:
             assert False, f"An error occurred while attempting creating {full_dir_path}: {e}"
 
+def main():
+    """Main game
+
+    Raises
+    ------
+    ValueError
+        Raised if value of game_state is invalid.
+    """
+
     #--------------------------- MAIN GAME ---------------------------
+    create_save_folders()
+
     # game_state: str = 'main'
     print("---------------- Welcome to Sundrop Caves! ----------------")
     print("You spent all your money to get the deed to a mine, a small")

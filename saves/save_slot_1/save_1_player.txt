@@ -4,11 +4,11 @@ y,1
 copper,0
 silver,0
 gold,0
-GP,30
+GP,0
 day,2
 steps,6
 turns,20
 capacity,10
-pickaxe_level,1
-valid_minable_ores,C
+pickaxe_level,3
+valid_minable_ores,CSG
 torch_level,1
