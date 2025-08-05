@@ -255,7 +255,7 @@ def choose_new_save_slot() -> int:
         if save_slot_choice in written_slots:
             confirmation_choice: str = validate_input(f"Are you sure? This will overwrite save "
                                                  f"slot {save_slot_choice}. "
-                                                 "Your choice (y/n)? ", r"^[y|n]$", True)
+                                                 "Your choice (y/n)? ", r"^[yn]$", True)
             if confirmation_choice == "n":
                 print(f"You chose not to overwrite save slot {save_slot_choice}")
                 continue
@@ -999,7 +999,7 @@ def main_menu(game_map_in: list[list[str]], fog_in: list[list[str]],
 
     while True:
         show_main_menu()
-        main_menu_choice: str = validate_input("Your choice? ", r"^[n|l|q]$", True)
+        main_menu_choice: str = validate_input("Your choice? ", r"^[nlq]$", True)
 
         if main_menu_choice == "n":
             initialize_game(game_map_in=game_map_in, fog_in=fog_in,
@@ -1120,7 +1120,7 @@ def mine_menu(game_map_in: list[list[str]], fog_in: list[list[str]],
 
     while True:
         show_mine_menu(player_in=player_in)
-        mine_menu_choice: str = validate_input("Action? ", r"^[w|a|s|d|m|i|p|q]$", True)
+        mine_menu_choice: str = validate_input("Action? ", r"^[wasdmipq]$", True)
         print("\n------------------------------------------------------")
 
         if mine_menu_choice in "wasd":
@@ -1180,7 +1180,7 @@ def town_menu(game_map_in: list[list[str]], fog_in: list[list[str]],
             break
 
         show_town_menu(player_in=player_in)
-        town_menu_choice: str = validate_input("Your choice? ", r"^[b|i|m|e|v|q]$", True)
+        town_menu_choice: str = validate_input("Your choice? ", r"^[bimevq]$", True)
 
         if town_menu_choice == "b":
             shop_menu(player_in=player_in)
