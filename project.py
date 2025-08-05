@@ -246,8 +246,7 @@ def choose_new_save_slot() -> int:
     written_slots: list[int] = find_written_slots(mode="save")
 
     # Creating regex for input validation based on number of save slots.
-    separator = "|"
-    regex: str = separator.join([str(i) for i in list(range(1,SAVE_SLOT_QUANTITY+1))])
+    regex: str = "".join([str(i) for i in list(range(1,SAVE_SLOT_QUANTITY+1))])
     regex = create_regex(valid_char=regex)
 
     # Asking user for desired save slot choice
@@ -1020,8 +1019,7 @@ def main_menu(game_map_in: list[list[str]], fog_in: list[list[str]],
                 print("There has not been a save slot written to. Please create a new save slot.")
                 continue
 
-            separator = "|"
-            regex = separator.join(save_slots_written_already)
+            regex = "".join(save_slots_written_already)
             regex = create_regex(valid_char=regex)
 
             current_save_slot = int(validate_input("Your choice? ", regex, True))
