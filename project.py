@@ -53,6 +53,9 @@ game_state: str = "main" # can be "main", "exit", "town", "mine"
 FILES_TO_SAVE: tuple[str, str, str] = ("fog", "map", "player")
 
 TOWN_POSITION = (0, 0)
+TORCH_LEVEL_LIMIT = 3
+BACKPACK_UPGRADE_CONSTANT = 2 # Used to find 1. cost of backpack upgrade and 2. capacity increase
+TORCH_UPGRADE_MULTIPLIER = 25
 # ------------------------- GENERAL Functions -------------------------
 
 
@@ -99,7 +102,7 @@ def get_pos_in_square(x: int, y: int,
                                   list_height: int,
                                   list_width: int,
                                   torch_level: int) -> list[dict[str, int]]:
-    """Returns positions that are within a square of side 3 as the (x,y) the centre.
+    """Returns positions that are within a square of side 3 (adjusted by torch_level) as the (x,y) the centre.
     I.e. positions that are within a Manhattan Distance of 2 units, exclduing (x,y)
 
     Returns
@@ -111,7 +114,7 @@ def get_pos_in_square(x: int, y: int,
     valid_positions: list[dict[str, int]] = []
     # invalid_positions: list[dict[str, int]] = []
 
-    sq_range = sq_increment_range(torch_level)
+    sq_range: range = sq_increment_range(torch_level)
 
     for i in sq_range:
         row_n: int = y + i
@@ -164,8 +167,8 @@ def sq_increment_range(torch_level_in: int) -> range:
     ```
     Parameters
     ----------
-    side_length : int
-        Valid values = {3, 5, ...}
+    torch_level_in : int
+        Valid values = 1 to TORCH_LEVEL_LIMIT, all inclusive
 
     Returns
     -------
@@ -177,12 +180,10 @@ def sq_increment_range(torch_level_in: int) -> range:
     ValueError
         Raised if side_length value is invalid.
     """
-    side_length = 2 * torch_level_in + 1
-    if not(side_length >= 3 and side_length % 2 == 1):
-        raise ValueError("torch_level_in must be an int x, x >= 1")
 
-    increment = int((side_length - 1) / 2)
-    return range(0-increment, 1+increment)
+    if not(isinstance(torch_level_in, int) and 1 <= torch_level_in <= TORCH_LEVEL_LIMIT):
+        raise ValueError("torch_level_in must be an int x, 1 <= x <= TORCH_LEVEL_LIMIT")
+    return range(0-torch_level_in, 1+torch_level_in)
 
 
 # ------------------------- Initialise-, Load-, Save-related Functions -------------------------
@@ -288,7 +289,7 @@ def load_map(filename: str, map_struct: list) -> None:
 # Template
 def clear_fog(game_map_in: list[list[str]], fog_in: list[list[str]],
               player_in: dict[str, str | int]) -> None:
-    """This function clears the fog of war at the 3x3 square around the player
+    """This function clears the fog of war at the 3x3 square around the player. (adjusted by torch level)
 
     Parameters
     ----------
@@ -365,6 +366,7 @@ def initialize_game(game_map_in: list[list[str]],
     player_in["valid_minable_ores"] = "C"
     # ^ uses first letters of minerals to check if player can mine
     player_in["torch_level"] = 1
+    player_in["totalGP"] = 0
 
     clear_fog(game_map_in=game_map_in, fog_in=fog_in, player_in=player_in)
 
@@ -427,25 +429,35 @@ def draw_view(map_in: list[list[str]], player_in: dict[str, str | int]) -> None:
     print(f"DAY {player['day']}")
     x: int = player_in["x"]
     y: int = player_in["y"]
-    sq_range = sq_increment_range(player_in["torch_level"])
+    sq_range: range = sq_increment_range(player_in["torch_level"])
 
-    view: str = "+---+\n"
+    mine_rows: list[list[str]] = []
+
     for i in sq_range:
         row_n: int = y + i
-        view += "|"
+        mine_row = ""
         for j in sq_range:
             col_n: int = x + j
 
             is_at_player_position: bool = are_equal(y1=y, y2=row_n, x1=x, x2=col_n)
 
             if is_at_player_position: # Draws player
-                view += "M"
+                mine_row += "M"
             elif is_within(height=MAP_HEIGHT, width=MAP_WIDTH, x=col_n, y=row_n):
-                view += map_in[row_n][col_n]
-            else: # Draws wall of mine
-                view += "#"
-        view += "|\n"
-    view += "+---+"
+                mine_row += map_in[row_n][col_n]
+            elif -1 <= row_n <= MAP_HEIGHT and -1 <= col_n <= MAP_WIDTH:
+                mine_row += "#"
+            # else:
+            #     mine_row += " "
+        if mine_row != "":
+            mine_rows.append(mine_row)
+
+    mine_rows = [f"|{row}|\n" for row in mine_rows]
+
+    border_len: int = len(mine_rows[0]) - 3
+    view: str= f"+{"-"*border_len}+\n"
+    view += "".join(mine_rows)
+    view += f"+{"-"*border_len}+\n"
     print(view)
 
 
@@ -582,6 +594,7 @@ def show_information(menu_type: str, player_in: dict[str, str | int]) -> None:
         print(f"Current position: {(player_in["x"], player_in["y"])}")
 
     print(f"Pickaxe level: {player_in['pickaxe_level']} ({minerals[player_in['pickaxe_level']-1]})")
+    print(f"Torch level: {player_in["torch_level"]}")
     if menu_type == "mine":
         minerals.reverse()
         for mineral in minerals:
@@ -631,6 +644,7 @@ def show_town_menu(player_in: dict[str, str | int]) -> None:
 
 
 def show_shop_menu(show_pickaxes: bool,
+                   show_torch: bool,
                    player_in: dict[str, str | int]) -> None:
     """Shows shop menu
 
@@ -638,6 +652,8 @@ def show_shop_menu(show_pickaxes: bool,
     ----------
     show_pickaxes : bool
         Indicates whether to show pick axe price
+    show_torch : bool
+        Indicates whether to show torch price
     player_in : dict[str, str  |  int]
         input for GLOBAL player (originally named player)
     """
@@ -648,8 +664,12 @@ def show_shop_menu(show_pickaxes: bool,
         print(f"(P)ickaxe upgrade to Level {player_in['pickaxe_level']+1} "
               f"to mine {minerals[player_in['pickaxe_level']]} ore for {pickaxe_price} GP")
 
-    backpack_upgrade_price: int = player_in["capacity"] * 2
-    print(f"(B)ackpack upgrade to carry {player_in["capacity"]+2} items "
+    if show_torch:
+        torch_price: int = player_in["torch_level"] * TORCH_UPGRADE_MULTIPLIER
+        print(f"(T)orch upgrade to Level {player_in['torch_level']+1} for {torch_price} GP")
+
+    backpack_upgrade_price: int = player_in["capacity"] * BACKPACK_UPGRADE_CONSTANT
+    print(f"(B)ackpack upgrade to carry {player_in["capacity"]+BACKPACK_UPGRADE_CONSTANT} items "
           f"for {backpack_upgrade_price} GP")
     print("(L)eave shop")
     print("-----------------------------------------------------------")
@@ -758,6 +778,7 @@ def sell_ores(player_in: dict[str, str | int]) -> bool:
             gp_sold: int = player_in[mineral] * current_prices[mineral]
             print(f"You sell {player_in[mineral]} {mineral} ore for {gp_sold} GP.")
             player_in["GP"] += gp_sold
+            player_in["totalGP"] += gp_sold
             player_in[mineral] = 0
             have_sold_stuff = True
 
@@ -1011,11 +1032,34 @@ def main_menu(game_map_in: list[list[str]], fog_in: list[list[str]],
                 continue
             # return True
             game_state = "town"
+            print("Game loaded.")
             break
         if main_menu_choice == "q":
             # return False
             game_state = "exit"
             break
+
+
+def buy(player_in: dict[str, str | int], option: str, price: int) -> None:
+    """Simulates buying."""
+    if player_in["GP"] < price:
+        print("You don't have enough GP!")
+        return None
+
+    player_in["GP"] -= price
+
+    if option == "p":
+        player_in["valid_minable_ores"] += minerals[player_in['pickaxe_level']-1][0].upper()
+        player_in["pickaxe_level"] += 1
+        print("Congratulations! "
+                f"You can now mine {minerals[player_in['pickaxe_level']-1]}!")
+    elif option == "b":
+        player_in["capacity"] += BACKPACK_UPGRADE_CONSTANT
+        print(f"Congratulations! You can now carry {player_in["capacity"]} items!")
+    else:
+        player_in["torch_level"] += 1
+        print(f"Congratulations! Your torch level is now level {player_in['torch_level']}.")
+    return None
 
 
 def shop_menu(player_in: dict[str, str | int]) -> None:
@@ -1031,31 +1075,26 @@ def shop_menu(player_in: dict[str, str | int]) -> None:
         # Determine valid options
         options: str = "bl"
         show_pickaxes: bool = False
+        show_torch: bool = False
 
         if player_in["pickaxe_level"] <= len(pickaxe_prices):
             options += "p"
             show_pickaxes = True
-        show_shop_menu(show_pickaxes=show_pickaxes, player_in=player_in)
+        if player_in["torch_level"] < TORCH_LEVEL_LIMIT:
+            options += "t"
+            show_torch = True
+        show_shop_menu(show_pickaxes=show_pickaxes, show_torch=show_torch, player_in=player_in)
         shop_menu_choice: str = validate_input("Your choice? ", create_regex(options), True)
 
         if shop_menu_choice == "p":
-            pickaxe_price: int = pickaxe_prices[player_in["pickaxe_level"]-1]
-            if player_in["GP"] >= pickaxe_price:
-                player_in["GP"] -= pickaxe_price
-                player_in["pickaxe_level"] += 1
-                player_in["valid_minable_ores"] += minerals[player_in['pickaxe_level']-1][0].upper()
-                print("Congratulations! "
-                      f"You can now mine {minerals[player_in['pickaxe_level']-1]}!")
-            else:
-                print("You don't have enough GP!")
+            price: int = pickaxe_prices[player_in["pickaxe_level"]-1]
+            buy(player_in=player_in, option=shop_menu_choice, price=price)
         elif shop_menu_choice == "b":
-            price: int = player_in["capacity"] * 2
-            if player_in["GP"] >= price:
-                player_in["GP"] -= price
-                player_in["capacity"] += 2
-                print(f"Congratulations! You can now carry {player_in["capacity"]} items!\n")
-            else:
-                print("You don't have enough GP!")
+            price: int = player_in["capacity"] * BACKPACK_UPGRADE_CONSTANT
+            buy(player_in=player_in, option=shop_menu_choice, price=price)
+        elif shop_menu_choice == "t":
+            price: int = player_in["torch_level"] * TORCH_UPGRADE_MULTIPLIER
+            buy(player_in=player_in, option=shop_menu_choice, price=price)
         else:
             break
 
@@ -1203,7 +1242,7 @@ def main():
     print("You spent all your money to get the deed to a mine, a small")
     print("  backpack, a simple pickaxe and a magical portal stone.")
     print()
-    print("How quickly can you get the 500 GP you need to retire") # Was 1000 (typo from template)
+    print(f"How quickly can you get the {WIN_GP} GP you need to retire")
     print("  and live happily ever after?")
     print("-----------------------------------------------------------")
 
