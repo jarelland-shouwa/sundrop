@@ -281,10 +281,31 @@ def load_map(filename: str, map_struct: list) -> None:
         MAP_HEIGHT = len(map_struct)
 
 
-# Template TODO
-# def clear_fog(fog_in, player_in):
-#     """This function clears the fog of war at the 3x3 square around the player"""
-#     pass
+# Template
+def clear_fog(game_map_in: list[list[str]], fog_in: list[list[str]],
+              player_in: dict[str, str | int]) -> None:
+    """This function clears the fog of war at the 3x3 square around the player
+
+    Parameters
+    ----------
+    game_map_in : list[list[str]]
+        input for GLOBAL game map (originally named game_map)
+    fog_in : list[list[str]]
+        input for GLOBAL fog (originally named fog)
+    player_in : dict[str, str  |  int]
+        input for GLOBAL player (originally named player)
+    """
+
+    positions_to_update: list[dict[str, int]] = determine_square_grid_in_list(x=player_in["x"],
+                                                            y=player_in["y"],
+                                                            list_height=MAP_HEIGHT,
+                                                            list_width=MAP_WIDTH,
+                                                            torch_level=player_in["torch_level"])
+
+    for position in positions_to_update:
+        y = position["y"]
+        x = position["x"]
+        fog_in[y][x] = game_map_in[y][x]
 
 
 # Template
@@ -341,7 +362,7 @@ def initialize_game(game_map_in: list[list[str]],
     player_in["torch_level"] = 1
     # ^ uses first letters of minerals to check if player can mine
 
-    # clear_fog(fog, player) FIXME
+    clear_fog(game_map_in=game_map_in, fog_in=fog_in, player_in=player_in)
 
     print(f"Pleased to meet you, {name}. Welcome to Sundrop Town!")
 
@@ -859,7 +880,6 @@ def process_ore_into_backpack(ore_found_input: str, player_in: dict[str, str | i
         player_in[mineral_names[ore_found_input]] += remaining_space_in_backpack
 
 
-# STOPPED HERE NOTE
 def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int],
                      game_map_in: list[list[str]],
                      fog_in: list[list[str]])-> None: # -> bool FIXME Modulise this
@@ -889,22 +909,12 @@ def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int
 
     if valid_move_checker(direction=direction, move_value=move_value,
                           player_in=player_in, fog_in=fog_in):
-        # print("YAY you can move!")
         # Restore square to be stepped away (was previously covered by player avatar)
         fog_in[player_in["y"]][player_in["x"]] = game_map_in[player_in["y"]][player_in["x"]]
 
         player_in[direction] += move_value # Update player position
 
-        # Update positions within 3x3 square from player;
-        # update fog using game_map (clears fog)
-        positions_to_update: list[dict[str, int]] = determine_square_grid_in_list(x=player_in["x"],
-                                                            y=player_in["y"],
-                                                            list_height=MAP_HEIGHT,
-                                                            list_width=MAP_WIDTH, torch_level=player_in["torch_level"])
-        for position in positions_to_update:
-            y = position["y"]
-            x = position["x"]
-            fog_in[y][x] = game_map_in[y][x]
+        clear_fog(game_map_in=game_map_in, fog_in=fog_in, player_in=player_in)
 
         square_stepped: str = fog_in[player_in["y"]][player_in["x"]]
 
@@ -941,6 +951,7 @@ def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int
 
     # return False
     return None
+
 
 # ------------------------- Menu Functions -------------------------
 
@@ -1161,6 +1172,7 @@ def main():
             raise ValueError(f"game_state cannot be {game_state}")
 
     print("Thanks for playing")
+
 
 if __name__=="__main__":
     main()

@@ -1,12 +1,12 @@
 name,Bob
-x,9
+x,5
 y,1
 copper,0
 silver,0
 gold,0
-GP,14
+GP,30
 day,2
-steps,12
+steps,6
 turns,20
 capacity,10
 pickaxe_level,1
