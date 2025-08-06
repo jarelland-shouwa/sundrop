@@ -60,17 +60,34 @@ TORCH_UPGRADE_MULTIPLIER = 25
 
 
 def validate_input(message: str, regex: str, is_single: bool) -> str:
-    """Uses a regular expression to validate input. is_single
-    specifies if the input is a single character (e.g. for menu selections)"""
+    """Uses a regular expression to validate input
+    (best for single char input). is_single specifies if
+    the input is a single character (e.g. for menu selections)
+    If is_single == False, input will be categorised
+    as the following examples:
+    Note: "bob, gates CEO" will be INVALID for name var (cannot contain ",")
+    ```
+    VALID = ["bob", "bob gates", "bob  gates CEO"]
+    INVALID = ["\n", "\t", " ", " bob ", "\tbob\t", "bob\tgates", ""]```
+    """
 
     while True:
         user_input: str = input(message)
         if is_single and re.match(regex, user_input.lower()):
             return user_input.lower()
-        if re.match(regex, user_input):
+
+        has_tabs: bool =  user_input.find("\t") != -1
+        has_invalid_spaces: bool = user_input.startswith(" ") or user_input.endswith(" ")
+        has_new_lines: bool = user_input.find("\n") != -1
+        has_invalid_whitespaces: bool = has_invalid_spaces or has_new_lines or has_tabs
+
+        if re.match(regex, user_input) and not has_invalid_whitespaces:
             return user_input
+
         if user_input == "":
             print("Please enter a valid input instead of nothing.")
+        elif has_invalid_whitespaces:
+            print("Please enter a valid input that does not contain unnecessary/invalid whitespace.")
         else:
             print(f"{user_input} is invalid. Please enter a valid input.")
 
@@ -332,7 +349,7 @@ def initialize_game(game_map_in: list[list[str]],
     global current_save_slot
 
     current_save_slot = choose_new_save_slot()
-    name: str = validate_input("Greetings, miner! What is your name? ", r"^.+$", False)
+    name: str = validate_input("Greetings, miner! What is your name? ", r"^[^,\n\t]+$", False)
 
     # initialise map
     game_map_in.clear()
@@ -375,7 +392,7 @@ def initialize_game(game_map_in: list[list[str]],
 
 
 # Template
-def draw_map(fog_in: list[list[str]], in_town: bool) -> None:
+def draw_map(fog_in: list[list[str]], player_in: dict[str, str | int]) -> None:
     """This function draws the entire map, covered by the fog if applicable.
     Accounts for special cases:
     1. Player in town
@@ -385,13 +402,19 @@ def draw_map(fog_in: list[list[str]], in_town: bool) -> None:
     ----------
     fog_in : list[list[str]]
         input for GLOBAL fog variable (originally named fog) [or can be any 2D list]
-    in_town : bool
-        tells if player is in town
+    player_in : dict[str, str  |  int]
+        input for GLOBAL player (originally named player)
     
-    Unused parameters from template
+    Unused parameters from template TODO
     -----------------
-    player
+    game_map
     """
+
+    # in_town: bool = (player_in["x"], player_in["y"]) == TOWN_POSITION
+    # FIXME DOESN'T WORK; NEED TO ACCOUNT FOR PORTAL
+    in_town: bool = False
+    if game_state == "town":
+        in_town = True
 
     output_text: str = f"\n+{"-"*MAP_WIDTH}+\n"
     for i in range(MAP_HEIGHT):
@@ -1149,7 +1172,7 @@ def mine_menu(game_map_in: list[list[str]], fog_in: list[list[str]],
             #     # return False
             #     break
         elif mine_menu_choice == "m":
-            draw_map(fog_in=fog_in, in_town=False)
+            draw_map(fog_in=fog_in, player_in=player_in)
         elif mine_menu_choice == "i":
             show_information(menu_type="mine", player_in=player_in)
         elif mine_menu_choice == "p":
@@ -1196,7 +1219,7 @@ def town_menu(game_map_in: list[list[str]], fog_in: list[list[str]],
         elif town_menu_choice == "i":
             show_information(menu_type="town", player_in=player_in)
         elif town_menu_choice == "m":
-            draw_map(fog_in=fog_in, in_town=True)
+            draw_map(fog_in=fog_in, player_in=player_in)
         elif town_menu_choice == "e":
             # return_to_main_menu: bool = mine_menu(player_in=player_in,
             #                                       game_map_in=game_map_in,
