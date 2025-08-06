@@ -102,7 +102,8 @@ def get_pos_in_square(x: int, y: int,
                                   list_height: int,
                                   list_width: int,
                                   torch_level: int) -> list[dict[str, int]]:
-    """Returns positions that are within a square of side 3 (adjusted by torch_level) as the (x,y) the centre.
+    """Returns positions that are within a square of side 3
+    (adjusted by torch_level) as the (x,y) the centre.
     I.e. positions that are within a Manhattan Distance of 2 units, exclduing (x,y)
 
     Returns
@@ -288,7 +289,8 @@ def load_map(filename: str, map_struct: list) -> None:
 # Template
 def clear_fog(game_map_in: list[list[str]], fog_in: list[list[str]],
               player_in: dict[str, str | int]) -> None:
-    """This function clears the fog of war at the 3x3 square around the player. (adjusted by torch level)
+    """This function clears the fog of war at the 3x3
+    square around the player. (adjusted by torch level)
 
     Parameters
     ----------
@@ -373,7 +375,7 @@ def initialize_game(game_map_in: list[list[str]],
 
 
 # Template
-def draw_map(map_in: list[list[str]], in_town: bool) -> None:
+def draw_map(fog_in: list[list[str]], in_town: bool) -> None:
     """This function draws the entire map, covered by the fog if applicable.
     Accounts for special cases:
     1. Player in town
@@ -381,14 +383,14 @@ def draw_map(map_in: list[list[str]], in_town: bool) -> None:
 
     Parameters
     ----------
-    map_in : list[list[str]]
-        input for GLOBAL map variable (originally named game_map)
+    fog_in : list[list[str]]
+        input for GLOBAL fog variable (originally named fog) [or can be any 2D list]
     in_town : bool
         tells if player is in town
     
     Unused parameters from template
     -----------------
-    fog, player
+    player
     """
 
     output_text: str = f"\n+{"-"*MAP_WIDTH}+\n"
@@ -398,11 +400,11 @@ def draw_map(map_in: list[list[str]], in_town: bool) -> None:
             if in_town and (i,j) == TOWN_POSITION: # Special case 1
                 row_text += "M"
                 continue
-            if in_town and map_in[i][j] == "M": # Special case 2
+            if in_town and fog_in[i][j] == "M": # Special case 2
                 row_text += "P"
                 continue
 
-            row_text += map_in[i][j]
+            row_text += fog_in[i][j]
         output_text += f"|{row_text}|\n"
     output_text += f"+{"-"*MAP_WIDTH}+"
 
@@ -410,25 +412,27 @@ def draw_map(map_in: list[list[str]], in_town: bool) -> None:
 
 
 # Template
-def draw_view(map_in: list[list[str]], player_in: dict[str, str | int]) -> None:
+def draw_view(game_map_in: list[list[str]],
+              player_in: dict[str, str | int], fog_in: list[list[str]]) -> None:
     """This function draws the 3x3 viewport. (adjusted by torch level)
 
     Parameters
     ----------
-    map_in : list[list[str]]
-        input for GLOBAL map variable (originally named game_map)
+    game_map_in : list[list[str]]
+        input for GLOBAL game map variable (originally named game_map)
     player_in : dict[str, str  |  int]
         input for GLOBAL player (originally named player)
-    
-    Unused parameters from template
-    -------------------------------
-    fog
+    fog_in : list[list[str]]
+        input for GLOBAL fog (originally named fog)
     """
 
     print(f"DAY {player['day']}")
     x: int = player_in["x"]
     y: int = player_in["y"]
     sq_range: range = sq_increment_range(player_in["torch_level"])
+
+    # Ensures that if torch is upgraded, viewport is affected too
+    clear_fog(game_map_in=game_map_in, fog_in=fog_in, player_in=player_in)
 
     mine_rows: list[list[str]] = []
 
@@ -443,7 +447,7 @@ def draw_view(map_in: list[list[str]], player_in: dict[str, str | int]) -> None:
             if is_at_player_position: # Draws player
                 mine_row += "M"
             elif is_within(height=MAP_HEIGHT, width=MAP_WIDTH, x=col_n, y=row_n):
-                mine_row += map_in[row_n][col_n]
+                mine_row += fog_in[row_n][col_n]
             elif -1 <= row_n <= MAP_HEIGHT and -1 <= col_n <= MAP_WIDTH:
                 mine_row += "#"
             # else:
@@ -676,19 +680,24 @@ def show_shop_menu(show_pickaxes: bool,
     print("-----------------------------------------------------------")
 
 
-def show_mine_menu(player_in: dict[str, str | int]) -> None:
+def show_mine_menu(player_in: dict[str, str | int],
+                   fog_in: list[list[str]], game_map_in: list[list[str]]) -> None:
     """Shows mine menu
 
     Parameters
     ----------
     player_in : dict[str, str  |  int]
         input for GLOBAL player (originally named player)
+    fog_in : list[list[str]]
+        input for GLOBAL fog (originally named fog)
+    game_map_in : list[list[str]]
+        input for GLOBAL game map (originally named game_map)
     """
 
     # print("---------------------------------------------------")
     # print(f"{f"DAY {player_in['day']}":^50}")
     # print("---------------------------------------------------")
-    draw_view(map_in=fog, player_in=player_in)
+    draw_view(game_map_in=game_map_in, player_in=player_in, fog_in=fog_in)
     print(f"Turns left: {player_in['turns']} {" "*4} Load: "
           f"{sum_ores_in_backpack(player_in=player_in)} / {player_in["capacity"]} "
           f"{" "*4} Steps: {player_in['steps']}")
@@ -1047,7 +1056,7 @@ def buy(player_in: dict[str, str | int], option: str, price: int) -> None:
     player_in["GP"] -= price
 
     if option == "p":
-        player_in["valid_minable_ores"] += minerals[player_in['pickaxe_level']-1][0].upper()
+        player_in["valid_minable_ores"] += minerals[player_in['pickaxe_level']][0].upper()
         player_in["pickaxe_level"] += 1
         print("Congratulations! "
                 f"You can now mine {minerals[player_in['pickaxe_level']-1]}!")
@@ -1119,7 +1128,7 @@ def mine_menu(game_map_in: list[list[str]], fog_in: list[list[str]],
     print("---------------------------------------------------")
 
     while True:
-        show_mine_menu(player_in=player_in)
+        show_mine_menu(player_in=player_in, fog_in=fog_in, game_map_in=game_map_in)
         mine_menu_choice: str = validate_input("Action? ", r"^[wasdmipq]$", True)
         print("\n------------------------------------------------------")
 
@@ -1140,7 +1149,7 @@ def mine_menu(game_map_in: list[list[str]], fog_in: list[list[str]],
             #     # return False
             #     break
         elif mine_menu_choice == "m":
-            draw_map(map_in=fog_in, in_town=False)
+            draw_map(fog_in=fog_in, in_town=False)
         elif mine_menu_choice == "i":
             show_information(menu_type="mine", player_in=player_in)
         elif mine_menu_choice == "p":
@@ -1187,7 +1196,7 @@ def town_menu(game_map_in: list[list[str]], fog_in: list[list[str]],
         elif town_menu_choice == "i":
             show_information(menu_type="town", player_in=player_in)
         elif town_menu_choice == "m":
-            draw_map(map_in=fog_in, in_town=True)
+            draw_map(fog_in=fog_in, in_town=True)
         elif town_menu_choice == "e":
             # return_to_main_menu: bool = mine_menu(player_in=player_in,
             #                                       game_map_in=game_map_in,
