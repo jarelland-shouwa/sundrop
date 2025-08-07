@@ -10,7 +10,7 @@ import os
 import re
 
 player: dict[str, str | int] = {}
-game_map: list[list[str]] = []
+current_map: list[list[str]] = [] # originally named game_map
 fog: list[list[str]] = []
 
 MAP_WIDTH: int = 0
@@ -314,14 +314,14 @@ def load_map(filename: str, map_struct: list) -> None:
 
 
 # Template
-def clear_fog(game_map_in: list[list[str]], fog_in: list[list[str]],
+def clear_fog(current_map_in: list[list[str]], fog_in: list[list[str]],
               player_in: dict[str, str | int]) -> None:
     """This function clears the fog of war at the 3x3
     square around the player. (adjusted by torch level)
 
     Parameters
     ----------
-    game_map_in : list[list[str]]
+    current_map_in : list[list[str]]
         input for GLOBAL game map (originally named game_map)
     fog_in : list[list[str]]
         input for GLOBAL fog (originally named fog)
@@ -338,17 +338,17 @@ def clear_fog(game_map_in: list[list[str]], fog_in: list[list[str]],
     for position in positions_to_update:
         y = position["y"]
         x = position["x"]
-        fog_in[y][x] = game_map_in[y][x]
+        fog_in[y][x] = current_map_in[y][x]
 
 
 # Template
-def initialize_game(game_map_in: list[list[str]],
+def initialize_game(current_map_in: list[list[str]],
                     fog_in: list[list[str]], player_in: dict[str, str | int]) -> None:
-    """Initiliases game_map, fog and player information.
+    """Initiliases current_map, fog and player information.
 
     Parameters
     ----------
-    game_map_in : list[list[str]]
+    current_map_in : list[list[str]]
         input for GLOBAL game map (originally named game_map)
     fog_in : list[list[str]]
         input for GLOBAL fog (originally named fog)
@@ -362,9 +362,9 @@ def initialize_game(game_map_in: list[list[str]],
     name: str = validate_input("Greetings, miner! What is your name? ", r"^[^,\n\t]+$", False)
 
     # initialise map
-    game_map_in.clear()
+    current_map_in.clear()
     try:
-        load_map(filename="level1.txt", map_struct=game_map_in)
+        load_map(filename="level1.txt", map_struct=current_map_in)
     except FileNotFoundError:
         print("FileNotFoundError; Please check that the level map exists again.")
 
@@ -396,7 +396,7 @@ def initialize_game(game_map_in: list[list[str]],
     player_in["torch_level"] = 1
     player_in["total_GP"] = 0
 
-    clear_fog(game_map_in=game_map_in, fog_in=fog_in, player_in=player_in)
+    clear_fog(current_map_in=current_map_in, fog_in=fog_in, player_in=player_in)
 
     print(f"Pleased to meet you, {name}. Welcome to Sundrop Town!")
 
@@ -417,7 +417,7 @@ def draw_map(fog_in: list[list[str]], player_in: dict[str, str | int]) -> None:
     
     Unused parameters from template TODO
     -----------------
-    game_map
+    current_map
     """
 
     # in_town: bool = (player_in["x"], player_in["y"]) == TOWN_POSITION
@@ -445,13 +445,13 @@ def draw_map(fog_in: list[list[str]], player_in: dict[str, str | int]) -> None:
 
 
 # Template
-def draw_view(game_map_in: list[list[str]],
+def draw_view(current_map_in: list[list[str]],
               player_in: dict[str, str | int], fog_in: list[list[str]]) -> None:
     """This function draws the 3x3 viewport. (adjusted by torch level)
 
     Parameters
     ----------
-    game_map_in : list[list[str]]
+    current_map_in : list[list[str]]
         input for GLOBAL game map variable (originally named game_map)
     player_in : dict[str, str  |  int]
         input for GLOBAL player (originally named player)
@@ -465,7 +465,7 @@ def draw_view(game_map_in: list[list[str]],
     sq_range: range = sq_increment_range(player_in["torch_level"])
 
     # Ensures that if torch is upgraded, viewport is affected too
-    clear_fog(game_map_in=game_map_in, fog_in=fog_in, player_in=player_in)
+    clear_fog(current_map_in=current_map_in, fog_in=fog_in, player_in=player_in)
 
     mine_rows: list[list[str]] = []
 
@@ -498,7 +498,7 @@ def draw_view(game_map_in: list[list[str]],
 
 
 # Template
-def save_game(save_slot_number: int, game_map_in: list[list[str]],
+def save_game(save_slot_number: int, current_map_in: list[list[str]],
               fog_in: list[list[str]], player_in: dict[str, str | int]) -> None:
     """This function saves the game.
 
@@ -506,7 +506,7 @@ def save_game(save_slot_number: int, game_map_in: list[list[str]],
     ----------
     save_slot_number : int
         Save slot number to save to determined by player.
-    game_map_in : list[list[str]]
+    current_map_in : list[list[str]]
         input for GLOBAL game map (originally named game_map)
     fog_in : list[list[str]]
         input for GLOBAL fog (originally named fog)
@@ -516,7 +516,7 @@ def save_game(save_slot_number: int, game_map_in: list[list[str]],
 
     # Saving game map
     save_list_to_txt(get_full_directory(slot_number=save_slot_number,
-                                        data_name="map"), game_map_in)
+                                        data_name="map"), current_map_in)
 
     # Saving fog
     save_list_to_txt(get_full_directory(slot_number=save_slot_number,
@@ -535,7 +535,7 @@ def save_game(save_slot_number: int, game_map_in: list[list[str]],
 
 
 # Template
-def load_game(save_slot_number: int, game_map_in: list[list[str]],
+def load_game(save_slot_number: int, current_map_in: list[list[str]],
               fog_in: list[list[str]], player_in: dict[str, str | int]) -> bool:
     """This function loads the game.
 
@@ -543,7 +543,7 @@ def load_game(save_slot_number: int, game_map_in: list[list[str]],
     ----------
     save_slot_number : int
         Save slot number to load game from.
-    game_map_in : list[list[str]]
+    current_map_in : list[list[str]]
         input for GLOBAL game map (originally named game_map)
     fog_in : list[list[str]]
         input for GLOBAL fog (originally named fog)
@@ -559,7 +559,7 @@ def load_game(save_slot_number: int, game_map_in: list[list[str]],
     try:
         # load map
         load_map(filename=get_full_directory(slot_number=save_slot_number, data_name="map"),
-                  map_struct=game_map_in)
+                  map_struct=current_map_in)
 
         # load fog
         load_map(filename=get_full_directory(slot_number=save_slot_number, data_name="fog"),
@@ -714,7 +714,7 @@ def show_shop_menu(show_pickaxes: bool,
 
 
 def show_mine_menu(player_in: dict[str, str | int],
-                   fog_in: list[list[str]], game_map_in: list[list[str]]) -> None:
+                   fog_in: list[list[str]], current_map_in: list[list[str]]) -> None:
     """Shows mine menu
 
     Parameters
@@ -723,14 +723,14 @@ def show_mine_menu(player_in: dict[str, str | int],
         input for GLOBAL player (originally named player)
     fog_in : list[list[str]]
         input for GLOBAL fog (originally named fog)
-    game_map_in : list[list[str]]
+    current_map_in : list[list[str]]
         input for GLOBAL game map (originally named game_map)
     """
 
     # print("---------------------------------------------------")
     # print(f"{f"DAY {player_in['day']}":^50}")
     # print("---------------------------------------------------")
-    draw_view(game_map_in=game_map_in, player_in=player_in, fog_in=fog_in)
+    draw_view(current_map_in=current_map_in, player_in=player_in, fog_in=fog_in)
     print(f"Turns left: {player_in['turns']} {" "*4} Load: "
           f"{sum_ores_in_backpack(player_in=player_in)} / {player_in["capacity"]} "
           f"{" "*4} Steps: {player_in['steps']}")
@@ -763,10 +763,10 @@ def archive_data(player_in) -> None:
         text_to_write: str = ""
         for record in high_score_records:
             text_to_write += f"{record},{high_score_records[record]["day"]},{high_score_records[record]["steps"]},{high_score_records[record]["total_GP"]}\n"
-            print(record)
-        print(player_in)
+            # print(record)
+        # print(player_in)
         text_to_write += f"{player_in["name"]},{player_in["day"]},{player_in["steps"]},{player_in["total_GP"]}\n"
-        print("Added player")
+        # print("Added player")
         f.write(text_to_write)
 
 
@@ -840,7 +840,7 @@ def sell_ores(player_in: dict[str, str | int]) -> bool:
     if player_in["GP"] >= WIN_GP:
         show_game_won(player_in=player_in)
         save_game(save_slot_number=current_save_slot,
-                  game_map_in=game_map, fog_in=fog, player_in=player_in)
+                  current_map_in=current_map, fog_in=fog, player_in=player_in)
         archive_data(player_in=player_in)
         return True
     return False
@@ -960,7 +960,7 @@ def process_ore_into_backpack(ore_found_input: str, player_in: dict[str, str | i
 
 
 def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int],
-                     game_map_in: list[list[str]],
+                     current_map_in: list[list[str]],
                      fog_in: list[list[str]])-> None: # -> bool FIXME Modulise this
     """Simulates movement in the mine (WASD input in Mine Menu)
 
@@ -970,7 +970,7 @@ def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int
         User's selection in mine menu.
     player_in : dict[str, str  |  int]
         input for GLOBAL player (originally named player)
-    game_map_in : list[list[str]]
+    current_map_in : list[list[str]]
         input for GLOBAL game map (originally named game_map)
     fog_in : list[list[str]]
         input for GLOBAL fog (originally named fog)
@@ -989,11 +989,11 @@ def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int
     if valid_move_checker(direction=direction, move_value=move_value,
                           player_in=player_in, fog_in=fog_in):
         # Restore square to be stepped away (was previously covered by player avatar)
-        fog_in[player_in["y"]][player_in["x"]] = game_map_in[player_in["y"]][player_in["x"]]
+        fog_in[player_in["y"]][player_in["x"]] = current_map_in[player_in["y"]][player_in["x"]]
 
         player_in[direction] += move_value # Update player position
 
-        clear_fog(game_map_in=game_map_in, fog_in=fog_in, player_in=player_in)
+        clear_fog(current_map_in=current_map_in, fog_in=fog_in, player_in=player_in)
 
         square_stepped: str = fog_in[player_in["y"]][player_in["x"]]
 
@@ -1001,7 +1001,7 @@ def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int
             ore_found: str = fog_in[player_in["y"]][player_in["x"]]
             # print(f"Ore found: {ore_found}")
             process_ore_into_backpack(ore_found_input=ore_found, player_in=player_in)
-            game_map_in[player_in["y"]][player_in["x"]] = " " # Remove ore vein
+            current_map_in[player_in["y"]][player_in["x"]] = " " # Remove ore vein
         elif square_stepped == "T":
             print("You returned to town.")
             game_state = "town"
@@ -1034,13 +1034,13 @@ def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int
 # ------------------------- Menu Functions -------------------------
 
 
-def main_menu(game_map_in: list[list[str]], fog_in: list[list[str]],
+def main_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
               player_in: dict[str, str | int]) -> None: # -> bool
     """Simulates the interaction of main menu.
 
     Parameters
     ----------
-    game_map_in : list[list[str]]
+    current_map_in : list[list[str]]
         input for GLOBAL game map (originally named game_map)
     fog_in : list[list[str]]
         input for GLOBAL fog (originally named fog)
@@ -1057,12 +1057,12 @@ def main_menu(game_map_in: list[list[str]], fog_in: list[list[str]],
         main_menu_choice: str = validate_input("Your choice? ", r"^[nlq]$", True)
 
         if main_menu_choice == "n":
-            initialize_game(game_map_in=game_map_in, fog_in=fog_in,
+            initialize_game(current_map_in=current_map_in, fog_in=fog_in,
                             player_in=player_in)
             save_game(save_slot_number=current_save_slot,
-                      game_map_in=game_map_in, fog_in=fog_in, player_in=player_in)
+                      current_map_in=current_map_in, fog_in=fog_in, player_in=player_in)
             load_game(save_slot_number=current_save_slot,
-                      game_map_in=game_map_in, fog_in=fog_in, player_in=player_in)
+                      current_map_in=current_map_in, fog_in=fog_in, player_in=player_in)
             # return True
             game_state = "town"
             break
@@ -1079,7 +1079,7 @@ def main_menu(game_map_in: list[list[str]], fog_in: list[list[str]],
 
             current_save_slot = int(validate_input("Your choice? ", regex, True))
             loaded_success: bool = load_game(save_slot_number=current_save_slot,
-                                             game_map_in=game_map_in,
+                                             current_map_in=current_map_in,
                                              fog_in=fog_in, player_in=player_in)
             if not loaded_success:
                 continue
@@ -1152,13 +1152,13 @@ def shop_menu(player_in: dict[str, str | int]) -> None:
             break
 
 
-def mine_menu(game_map_in: list[list[str]], fog_in: list[list[str]],
+def mine_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
               player_in: dict[str, str | int]) -> None: # -> bool
     """Simulates the interaction of mine menu.
 
     Parameters
     ----------
-    game_map_in : list[list[str]]
+    current_map_in : list[list[str]]
         input for GLOBAL game map (originally named game_map)
     fog_in : list[list[str]]
         input for GLOBAL fog (originally named fog)
@@ -1174,17 +1174,17 @@ def mine_menu(game_map_in: list[list[str]], fog_in: list[list[str]],
     print("---------------------------------------------------")
 
     while True:
-        show_mine_menu(player_in=player_in, fog_in=fog_in, game_map_in=game_map_in)
+        show_mine_menu(player_in=player_in, fog_in=fog_in, current_map_in=current_map_in)
         mine_menu_choice: str = validate_input("Action? ", r"^[wasdmipq]$", True)
         print("\n------------------------------------------------------")
 
         if mine_menu_choice in "wasd":
             # return_to_town_menu: bool = movement_in_mine(mine_menu_choice_input=mine_menu_choice,
             #                                              player_in=player_in,
-            #                                              game_map_in=game_map_in,
+            #                                              current_map_in=current_map_in,
             #                                              fog_in=fog_in)
             movement_in_mine(mine_menu_choice_input=mine_menu_choice,
-                             player_in=player_in, game_map_in=game_map_in, fog_in=fog_in)
+                             player_in=player_in, current_map_in=current_map_in, fog_in=fog_in)
             # print(f"game_state = {game_state}")
             if game_state == "town":
                 new_day(player_in=player_in)
@@ -1211,13 +1211,13 @@ def mine_menu(game_map_in: list[list[str]], fog_in: list[list[str]],
             break
 
 
-def town_menu(game_map_in: list[list[str]], fog_in: list[list[str]],
+def town_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
               player_in: dict[str, str | int]) -> None:
     """Simulates the interaction of town menu.
 
     Parameters
     ----------
-    game_map_in : list[list[str]]
+    current_map_in : list[list[str]]
         input for GLOBAL game map (originally named game_map)
     fog_in : list[list[str]]
         input for GLOBAL fog (originally named fog)
@@ -1245,17 +1245,17 @@ def town_menu(game_map_in: list[list[str]], fog_in: list[list[str]],
             draw_map(fog_in=fog_in, player_in=player_in)
         elif town_menu_choice == "e":
             # return_to_main_menu: bool = mine_menu(player_in=player_in,
-            #                                       game_map_in=game_map_in,
+            #                                       current_map_in=current_map_in,
             #                                       fog_in=fog_in)
             # if return_to_main_menu:
             #     break
-            mine_menu(player_in=player_in, game_map_in=game_map_in, fog_in=fog_in)
+            mine_menu(player_in=player_in, current_map_in=current_map_in, fog_in=fog_in)
 
             if game_state == "main":
                 break
         elif town_menu_choice == "v":
             save_game(save_slot_number=current_save_slot,
-                  game_map_in=game_map_in, fog_in=fog_in, player_in=player_in)
+                  current_map_in=current_map_in, fog_in=fog_in, player_in=player_in)
         else:
             break
 
@@ -1289,7 +1289,7 @@ def load_high_scores() -> None:
         for i in range(len(data)):
             data[i] = data[i].split(",")
             high_score_records[data[i][0]] = {"day": data[i][1], "steps": data[i][2], "total_GP": data[i][3]}
-    print(high_score_records)
+    # print(high_score_records)
 
 
 #--------------------------- MAIN GAME ---------------------------
@@ -1321,18 +1321,18 @@ def main():
     print("-----------------------------------------------------------")
 
     while True: # MAIN LOOP
-        # continue_from_main: bool = main_menu(game_map_in=game_map,
+        # continue_from_main: bool = main_menu(current_map_in=current_map,
         #                                      fog_in=fog,
         #                                      player_in=player) # TRUE = CONTINUE
         # if not continue_from_main:
         #     break
         load_high_scores() # MAY CHANGE NOTE
-        main_menu(game_map_in=game_map, fog_in=fog, player_in=player)
+        main_menu(current_map_in=current_map, fog_in=fog, player_in=player)
 
         if game_state == "exit":
             break
         if game_state == "town":
-            town_menu(player_in=player, game_map_in=game_map, fog_in=fog)
+            town_menu(player_in=player, current_map_in=current_map, fog_in=fog)
         else:
             raise ValueError(f"game_state cannot be {game_state}")
 
