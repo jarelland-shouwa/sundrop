@@ -61,6 +61,10 @@ TORCH_UPGRADE_MULTIPLIER: int = 25
 high_score_records: dict = {}
 TOP_PLAYERS_QUANTITY: int = 5
 ARCHIVE_FILE_NAME: str = "past_players.txt"
+
+FOG_CHAR = "?"
+NON_FOG_CHAR = " "
+PLAYER_CHAR = "M"
 # ------------------------- GENERAL Functions -------------------------
 
 
@@ -147,9 +151,6 @@ def get_pos_in_square(x: int, y: int,
         row_n: int = y + i
         for j in sq_range:
             col_n: int = x + j
-
-            # Excludes the centre of the square
-            # is_centre: bool = are_equal(y1=y, y2=row_n, x1=x, x2=col_n)
 
             if is_within(height=list_height, width=list_width, x=col_n, y=row_n):
                 valid_positions.append({"x": col_n, "y": row_n})
@@ -334,8 +335,7 @@ def clear_fog(fog_in: list[list[str]], player_in: dict[str, str | int]) -> None:
     for position in positions_to_update:
         y = position["y"]
         x = position["x"]
-        # fog_in[y][x] = current_map_in[y][x]
-        fog_in[y][x] = " "
+        fog_in[y][x] = NON_FOG_CHAR
 
 
 # Template ✅✅✅
@@ -368,9 +368,8 @@ def initialize_game(current_map_in: list[list[str]],
     # initialise fog
     fog_in.clear()
     for _ in range(MAP_HEIGHT):
-        row: list[str] = ["?" for _ in range(MAP_WIDTH)]
+        row: list[str] = [FOG_CHAR for _ in range(MAP_WIDTH)]
         fog_in.append(row)
-    # fog_in[0][0] = "M"
 
     # initialise player
     player_in.clear()
@@ -394,16 +393,14 @@ def initialize_game(current_map_in: list[list[str]],
     player_in["total_GP"] = 0
 
     clear_fog(fog_in=fog_in, player_in=player_in)
+
     print(f"Pleased to meet you, {name}. Welcome to Sundrop Town!")
 
 
-# Template ✅✅✅ NOTE NEED TO CHECK IF walked_to_town WORKS
+# Template ✅✅✅
 def draw_map(fog_in: list[list[str]],
              player_in: dict[str, str | int], current_map_in: list[list[str]]) -> None:
     """This function draws the entire map, covered by the fog if applicable.
-    Accounts for special cases:
-    1. Player in town
-    2. Player in town & Portal stone placed
 
     Parameters
     ----------
@@ -415,43 +412,32 @@ def draw_map(fog_in: list[list[str]],
         input for GLOBAL game map (originally named game_map)
     """
 
-    used_portal_to_town = (player_in["y"], player_in["x"]) != TOWN_POSITION and game_state == "town"
-    walked_to_town = (player_in["y"], player_in["x"]) == TOWN_POSITION and game_state == "town"
-    in_mine = game_state == "mine"
+    player_pos = (player_in["y"], player_in["x"])
+
+    used_portal_to_town: bool = player_pos != TOWN_POSITION and game_state == "town"
+    walked_to_town: bool = player_pos == TOWN_POSITION and game_state == "town"
 
     output_text: str = f"\n+{"-"*MAP_WIDTH}+\n"
     for i in range(MAP_HEIGHT):
         row_text: str = ""
         for j in range(MAP_WIDTH):
-            # if in_town and (player_in["y"], player_in["x"]) == TOWN_POSITION: # Special case 1
-            #     row_text += "M"
-            #     continue
-            # if in_town and (player_in["y"], player_in["x"]) != TOWN_POSITION: # Special case 2
-            #     row_text += "P"
-            #     continue
-            if used_portal_to_town:
-                if (i,j) == TOWN_POSITION:
-                    row_text += "M"
-                elif (i,j) == (player_in["y"], player_in["x"]):
-                    row_text += "P"
-                elif fog_in[i][j] == " ":
-                    row_text += current_map_in[i][j]
-                else:
-                    row_text += "?"
-            elif walked_to_town:
-                if (i,j) == TOWN_POSITION:
-                    row_text += "M"
-                elif fog_in[i][j] == " ":
-                    row_text += current_map_in[i][j]
-                else:
-                    row_text += "?"
-            elif in_mine:
-                if (i,j) == (player_in["y"], player_in["x"]):
-                    row_text += "M"
-                elif fog_in[i][j] == " ":
-                    row_text += current_map_in[i][j]
-                else:
-                    row_text += "?"
+            add_player: bool = False
+            if used_portal_to_town or walked_to_town:
+                add_player = (i,j) == TOWN_POSITION
+            else: # Not in town
+                add_player = (i,j) == (player_in["y"], player_in["x"])
+
+            add_portal: bool = (i,j) == player_pos and used_portal_to_town
+
+            if add_player:
+                row_text += PLAYER_CHAR
+            elif add_portal:
+                row_text += "P"
+            elif fog_in[i][j] == NON_FOG_CHAR:
+                row_text += current_map_in[i][j]
+            else:
+                row_text += FOG_CHAR
+
         output_text += f"|{row_text}|\n"
     output_text += f"+{"-"*MAP_WIDTH}+"
 
@@ -485,15 +471,15 @@ def draw_view(current_map_in: list[list[str]],
 
     for i in sq_range:
         row_n: int = y + i
-        mine_row = ""
+        mine_row: str = ""
         for j in sq_range:
             col_n: int = x + j
 
             is_at_player_position: bool = are_equal(y1=y, y2=row_n, x1=x, x2=col_n)
-            not_fog: bool = fog_in[row_n][col_n] == " "
+            not_fog: bool = fog_in[row_n][col_n] == NON_FOG_CHAR
 
             if is_at_player_position: # Draws player
-                mine_row += "M"
+                mine_row += PLAYER_CHAR
             elif is_within(height=MAP_HEIGHT, width=MAP_WIDTH, x=col_n, y=row_n) and not_fog:
                 mine_row += current_map_in[row_n][col_n]
             elif -1 <= row_n <= MAP_HEIGHT and -1 <= col_n <= MAP_WIDTH: # Draws walls
@@ -929,10 +915,10 @@ def valid_move_checker(direction: str, move_value: int,
     square_to_check: str = current_map_in[position_to_check["y"]][position_to_check["x"]]
 
     # Checks if player's backpack is full and if the square to be stepped on is a mineral
-    is_player_backpack_full: bool = sum_ores_in_backpack(player_in=player_in) == player_in["capacity"]
+    is_backpack_full: bool = sum_ores_in_backpack(player_in=player_in) == player_in["capacity"]
     is_next_square_a_mineral: bool = square_to_check in mineral_names
 
-    if is_player_backpack_full and is_next_square_a_mineral:
+    if is_backpack_full and is_next_square_a_mineral:
         print("You can't carry any more, so you can't go that way.")
         return False
     if is_next_square_a_mineral:
@@ -964,10 +950,10 @@ def process_ore_into_backpack(ore_found_input: str, player_in: dict[str, str | i
         print(f"...but you can only carry {remaining_space_in_backpack} more piece(s)!")
         player_in[mineral_names[ore_found_input]] += remaining_space_in_backpack
 
-
+# ✅✅✅
 def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int],
                      current_map_in: list[list[str]],
-                     fog_in: list[list[str]])-> None:
+                     fog_in: list[list[str]]) -> None:
     """Simulates movement in the mine (WASD input in Mine Menu)
 
     Parameters
@@ -994,39 +980,23 @@ def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int
 
     if valid_move_checker(direction=direction, move_value=move_value,
                           player_in=player_in, current_map_in=current_map_in):
-        # Restore square to be stepped away (was previously covered by player avatar)
-        fog_in[player_in["y"]][player_in["x"]] = current_map_in[player_in["y"]][player_in["x"]]
-
         player_in[direction] += move_value # Update player position
 
         clear_fog(fog_in=fog_in, player_in=player_in)
 
-        square_stepped: str = fog_in[player_in["y"]][player_in["x"]]
+        square_stepped: str = current_map_in[player_in["y"]][player_in["x"]]
 
         if square_stepped in mineral_names: # if an ore was stepped on
-            ore_found: str = fog_in[player_in["y"]][player_in["x"]]
-            # print(f"Ore found: {ore_found}")
-            process_ore_into_backpack(ore_found_input=ore_found, player_in=player_in)
+            process_ore_into_backpack(ore_found_input=square_stepped, player_in=player_in)
             current_map_in[player_in["y"]][player_in["x"]] = " " # Remove ore vein
         elif square_stepped == "T":
             print("You returned to town.")
             game_state = "town"
             return None
 
-        fog_in[player_in["y"]][player_in["x"]] = "M"
-
-    # Check if player's backpack is full (DOES NOT SEEM TO BE NEEDED)
-    # if player_in["capacity"] == sum_ores_in_backpack(player_in=player_in):
-    #     print("You can't carry any more, so you can't go that way.\n"
-    #         "You are exhausted.\n"
-    #         "You place your portal stone here and zap back to town.")
-    #     game_state = "town"
-    #     return None
-        # return True
     if player_in["turns"] == 0:
         print("You are exhausted.\n"
             "You place your portal stone here and zap back to town.")
-        fog_in[player_in["y"]][player_in["x"]] = "P"
         game_state = "town"
         return None
     return None

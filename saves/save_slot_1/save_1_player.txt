@@ -11,5 +11,5 @@ turns,20
 capacity,10
 pickaxe_level,1
 valid_minable_ores,C
-torch_level,2
+torch_level,1
 total_GP,0
