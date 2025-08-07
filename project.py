@@ -368,7 +368,7 @@ def initialize_game(current_map_in: list[list[str]],
     except FileNotFoundError:
         print("FileNotFoundError; Please check that the level map exists again.")
 
-    # initialise fog TODO Create a function that does this
+    # initialise fog
     fog_in.clear()
     for _ in range(MAP_HEIGHT):
         row: list[str] = ["?" for _ in range(MAP_WIDTH)]
@@ -1005,7 +1005,6 @@ def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int
         elif square_stepped == "T":
             print("You returned to town.")
             game_state = "town"
-            # return True
             return None
 
         fog_in[player_in["y"]][player_in["x"]] = "M"
@@ -1023,11 +1022,7 @@ def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int
             "You place your portal stone here and zap back to town.")
         fog_in[player_in["y"]][player_in["x"]] = "P"
         game_state = "town"
-        # new_day(player_in=player_in)
         return None
-        # return True
-
-    # return False
     return None
 
 
@@ -1063,11 +1058,9 @@ def main_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
                       current_map_in=current_map_in, fog_in=fog_in, player_in=player_in)
             load_game(save_slot_number=current_save_slot,
                       current_map_in=current_map_in, fog_in=fog_in, player_in=player_in)
-            # return True
             game_state = "town"
             break
         if main_menu_choice == "l":
-            # save_slots_written_already: list[int] = find_written_slots(mode="load")
             save_slots_written_already: list[str] = [str(n) for n in
                                                      find_written_slots(mode="load")]
             if len(save_slots_written_already) == 0:
@@ -1083,12 +1076,10 @@ def main_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
                                              fog_in=fog_in, player_in=player_in)
             if not loaded_success:
                 continue
-            # return True
             game_state = "town"
             print("Game loaded.")
             break
         if main_menu_choice == "q":
-            # return False
             game_state = "exit"
             break
 
@@ -1179,21 +1170,11 @@ def mine_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
         print("\n------------------------------------------------------")
 
         if mine_menu_choice in "wasd":
-            # return_to_town_menu: bool = movement_in_mine(mine_menu_choice_input=mine_menu_choice,
-            #                                              player_in=player_in,
-            #                                              current_map_in=current_map_in,
-            #                                              fog_in=fog_in)
             movement_in_mine(mine_menu_choice_input=mine_menu_choice,
                              player_in=player_in, current_map_in=current_map_in, fog_in=fog_in)
-            # print(f"game_state = {game_state}")
             if game_state == "town":
                 new_day(player_in=player_in)
                 break
-            # if return_to_town_menu:
-            #     new_day(player_in=player_in)
-            #     game_state = "town"
-            #     # return False
-            #     break
         elif mine_menu_choice == "m":
             draw_map(fog_in=fog_in, player_in=player_in)
         elif mine_menu_choice == "i":
@@ -1202,11 +1183,8 @@ def mine_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
             print("You place your portal stone here and zap back to town.")
             game_state = "town"
             new_day(player_in=player_in)
-            # new_day(player_in=player_in)
-            # return False
             break
         else:
-            # return True
             game_state = "main"
             break
 
@@ -1244,11 +1222,6 @@ def town_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
         elif town_menu_choice == "m":
             draw_map(fog_in=fog_in, player_in=player_in)
         elif town_menu_choice == "e":
-            # return_to_main_menu: bool = mine_menu(player_in=player_in,
-            #                                       current_map_in=current_map_in,
-            #                                       fog_in=fog_in)
-            # if return_to_main_menu:
-            #     break
             mine_menu(player_in=player_in, current_map_in=current_map_in, fog_in=fog_in)
 
             if game_state == "main":
@@ -1278,7 +1251,7 @@ def create_save_folders() -> None:
             assert False, f"An error occurred while attempting creating {full_dir_path}: {exp}"
 
 
-def load_high_scores() -> None:
+def load_high_scores() -> None: # FIXME
     """Reads the past players nfo who have have
     won (to be used to show high scores)"""
 
@@ -1321,12 +1294,7 @@ def main():
     print("-----------------------------------------------------------")
 
     while True: # MAIN LOOP
-        # continue_from_main: bool = main_menu(current_map_in=current_map,
-        #                                      fog_in=fog,
-        #                                      player_in=player) # TRUE = CONTINUE
-        # if not continue_from_main:
-        #     break
-        load_high_scores() # MAY CHANGE NOTE
+        load_high_scores()
         main_menu(current_map_in=current_map, fog_in=fog, player_in=player)
 
         if game_state == "exit":
