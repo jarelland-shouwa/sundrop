@@ -28,16 +28,17 @@ prices['copper'] = (1, 3)
 prices['silver'] = (5, 8)
 prices['gold'] = (10, 18)
 
-# NEW
 pieces_per_node: dict[str, tuple[int, int]] = {}
 pieces_per_node['copper'] = (1, 5)
 pieces_per_node['silver'] = (1, 3)
 pieces_per_node['gold'] = (1, 2)
 
-# Dynamic
 current_prices: dict[str, int] = {}
+current_save_slot: int = 1
 
-current_save_slot: int = 1 # Needs to be globalised
+game_state: str = "main" # can be "main", "exit", "town", "mine"
+high_score_records: dict = {}
+
 SAVE_SLOT_QUANTITY: int = 5
 
 WASD_TO_DIRECTION_AND_MOVE_VALUE: dict[str, dict[str, str | int]]= {
@@ -49,23 +50,27 @@ WASD_TO_DIRECTION_AND_MOVE_VALUE: dict[str, dict[str, str | int]]= {
 SAVE_SLOT_DIRECTORY_PREFIX: str = "saves/save_slot"
 # E.g. saves/save_slot_1 (to be done by get_save_slot_dir)
 
-game_state: str = "main" # can be "main", "exit", "town", "mine"
 FILES_TO_SAVE: tuple[str, str, str] = ("fog", "current_map", "player")
 
-TOWN_POSITION: tuple[int, int] = (0, 0)
-TORCH_LEVEL_LIMIT: int = 3
-BACKPACK_UPGRADE_CONSTANT: int = 2 # Used to find 1. cost of backpack upgrade
-# and 2. capacity increase
-TORCH_UPGRADE_MULTIPLIER: int = 25
-
-high_score_records: dict = {}
 TOP_PLAYERS_QUANTITY: int = 5
 ARCHIVE_FILE_NAME: str = "past_players.txt"
+
+TOWN_POSITION: tuple[int, int] = (0, 0)
 
 FOG_CHAR = "?"
 NON_FOG_CHAR = " "
 PLAYER_CHAR = "M"
+
+TORCH_LEVEL_LIMIT: int = 3
+BACKPACK_UPGRADE_CONSTANT: int = 2 # Used to find 1. cost of backpack upgrade
+# and 2. capacity increase
+TORCH_UPGRADE_MULTIPLIER: int = 25
 # ------------------------- GENERAL Functions -------------------------
+
+
+def create_regex(valid_char: str) -> str:
+    '''Creates a raw expression for regex that only accepts certain single characters.'''
+    return rf"^[{valid_char}]$"
 
 
 def validate_input(message: str, regex: str, is_single: bool) -> str:
@@ -96,10 +101,8 @@ def validate_input(message: str, regex: str, is_single: bool) -> str:
 
         if user_input == "":
             print("Please enter a valid input instead of nothing.")
-        elif "," in user_input:
-            print("Commas (,) are not allowed. Please enter input without it.")
         elif has_invalid_whitespaces:
-            print("Please enter a valid input that does not contain unnecessary/invalid whitespace.")
+            print("Please enter a valid input that doesn't contain unnecessary/invalid whitespace.")
         elif duplicate_name:
             print("That name has already been taken. Please enter another name.")
         else:
@@ -127,51 +130,6 @@ def is_within(height: int, width: int, x: int, y: int) -> bool:
 def are_equal(y1: int, y2: int, x1: int, x2: int) -> bool:
     '''Checks if two positions are equal.'''
     return x1 == x2 and y1 == y2
-
-# ✅✅✅
-def get_pos_in_square(x: int, y: int,
-                                  list_height: int,
-                                  list_width: int,
-                                  torch_level: int) -> list[dict[str, int]]:
-    """Returns positions that are within a square of side 3
-    (adjusted by torch_level) as the (x,y) the centre.
-    I.e. positions that are within a Manhattan Distance of 2 units,
-
-    Returns
-    -------
-    list[dict[str, int]]
-        valid_positions; E.g. [pos_dict_1, pos_dict_2, pos_dict_3, ...]
-    """
-
-    valid_positions: list[dict[str, int]] = []
-    # invalid_positions: list[dict[str, int]] = []
-    sq_range: range = sq_increment_range(torch_level)
-
-    for i in sq_range:
-        row_n: int = y + i
-        for j in sq_range:
-            col_n: int = x + j
-
-            if is_within(height=list_height, width=list_width, x=col_n, y=row_n):
-                valid_positions.append({"x": col_n, "y": row_n})
-            # else:
-            #     invalid_positions.append({"x": col_n, "y": row_n})
-    return valid_positions
-
-
-def create_regex(valid_char: str) -> str:
-    '''Creates a raw expression for regex that only accepts certain single characters.'''
-    return rf"^[{valid_char}]$"
-
-
-def get_file_name(slot_number: int, data_name: str) -> str:
-    '''Returns the file name for a txt file to be saved in a save slot.'''
-    return f"save_{slot_number}_{data_name}.txt"
-
-
-def get_save_slot_dir(number: int) -> str:
-    '''Returns save slot directory name based on slot number.'''
-    return f"{SAVE_SLOT_DIRECTORY_PREFIX}_{number}"
 
 
 def get_full_directory(slot_number: int, data_name: str) -> str:
@@ -212,6 +170,47 @@ def sq_increment_range(torch_level_in: int) -> range:
     if not(isinstance(torch_level_in, int) and 1 <= torch_level_in <= TORCH_LEVEL_LIMIT):
         raise ValueError("torch_level_in must be an int x, 1 <= x <= TORCH_LEVEL_LIMIT")
     return range(0-torch_level_in, 1+torch_level_in)
+
+
+# ✅✅✅
+def get_pos_in_square(x: int, y: int,
+                                  list_height: int,
+                                  list_width: int,
+                                  torch_level: int) -> list[dict[str, int]]:
+    """Returns positions that are within a square of side 3
+    (adjusted by torch_level) as the (x,y) the centre.
+    I.e. positions that are within a Manhattan Distance of 2 units.
+
+    Returns
+    -------
+    list[dict[str, int]]
+        valid_positions; E.g. [pos_dict_1, pos_dict_2, pos_dict_3, ...]
+    """
+
+    valid_positions: list[dict[str, int]] = []
+    # invalid_positions: list[dict[str, int]] = []
+    sq_range: range = sq_increment_range(torch_level)
+
+    for i in sq_range:
+        row_n: int = y + i
+        for j in sq_range:
+            col_n: int = x + j
+
+            if is_within(height=list_height, width=list_width, x=col_n, y=row_n):
+                valid_positions.append({"x": col_n, "y": row_n})
+            # else:
+            #     invalid_positions.append({"x": col_n, "y": row_n})
+    return valid_positions
+
+
+def get_file_name(slot_number: int, data_name: str) -> str:
+    '''Returns the file name for a txt file to be saved in a save slot.'''
+    return f"save_{slot_number}_{data_name}.txt"
+
+
+def get_save_slot_dir(number: int) -> str:
+    '''Returns save slot directory name based on slot number.'''
+    return f"{SAVE_SLOT_DIRECTORY_PREFIX}_{number}"
 
 
 # ------------------------- Initialise-, Load-, Save-related Functions -------------------------
@@ -356,7 +355,7 @@ def initialize_game(current_map_in: list[list[str]],
     global current_save_slot
 
     current_save_slot = choose_new_save_slot()
-    name: str = validate_input("Greetings, miner! What is your name? ", r"^[^,\n\t]+$", False)
+    name: str = validate_input("Greetings, miner! What is your name? ", r"^[^\n\t]+$", False)
 
     # initialise current map
     current_map_in.clear()
@@ -412,10 +411,10 @@ def draw_map(fog_in: list[list[str]],
         input for GLOBAL game map (originally named game_map)
     """
 
-    player_pos = (player_in["y"], player_in["x"])
+    player_position = (player_in["y"], player_in["x"])
 
-    used_portal_to_town: bool = player_pos != TOWN_POSITION and game_state == "town"
-    walked_to_town: bool = player_pos == TOWN_POSITION and game_state == "town"
+    used_portal_to_town: bool = player_position != TOWN_POSITION and game_state == "town"
+    walked_to_town: bool = player_position == TOWN_POSITION and game_state == "town"
 
     output_text: str = f"\n+{"-"*MAP_WIDTH}+\n"
     for i in range(MAP_HEIGHT):
@@ -427,7 +426,7 @@ def draw_map(fog_in: list[list[str]],
             else: # Not in town
                 add_player = (i,j) == (player_in["y"], player_in["x"])
 
-            add_portal: bool = (i,j) == player_pos and used_portal_to_town
+            add_portal: bool = (i,j) == player_position and used_portal_to_town
 
             if add_player:
                 row_text += PLAYER_CHAR
@@ -573,7 +572,7 @@ def load_game(save_slot_number: int, current_map_in: list[list[str]],
             data: list[str] = file.read().split("\n")
 
         for datum in data:
-            split_datum: list[str] = datum.split(",")
+            split_datum: list[str] = datum.split(",", 1)
             key, value = split_datum[0], split_datum[1]
             try: # For ints only
                 value = int(value)
@@ -798,6 +797,28 @@ def set_prices() -> None:
     current_prices.clear()
     for mineral in minerals:
         current_prices[mineral] = randint(prices[mineral][0], prices[mineral][1])
+
+
+def buy(player_in: dict[str, str | int], option: str, price: int) -> None:
+    """Simulates buying."""
+    if player_in["GP"] < price:
+        print("You don't have enough GP!")
+        return None
+
+    player_in["GP"] -= price
+
+    if option == "p":
+        player_in["valid_minable_ores"] += minerals[player_in['pickaxe_level']][0].upper()
+        player_in["pickaxe_level"] += 1
+        print("Congratulations! "
+                f"You can now mine {minerals[player_in['pickaxe_level']-1]}!")
+    elif option == "b":
+        player_in["capacity"] += BACKPACK_UPGRADE_CONSTANT
+        print(f"Congratulations! You can now carry {player_in["capacity"]} items!")
+    else:
+        player_in["torch_level"] += 1
+        print(f"Congratulations! Your torch level is now level {player_in['torch_level']}.")
+    return None
 
 
 def sell_ores(player_in: dict[str, str | int]) -> bool:
@@ -1060,28 +1081,6 @@ def main_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
             break
 
 
-def buy(player_in: dict[str, str | int], option: str, price: int) -> None:
-    """Simulates buying."""
-    if player_in["GP"] < price:
-        print("You don't have enough GP!")
-        return None
-
-    player_in["GP"] -= price
-
-    if option == "p":
-        player_in["valid_minable_ores"] += minerals[player_in['pickaxe_level']][0].upper()
-        player_in["pickaxe_level"] += 1
-        print("Congratulations! "
-                f"You can now mine {minerals[player_in['pickaxe_level']-1]}!")
-    elif option == "b":
-        player_in["capacity"] += BACKPACK_UPGRADE_CONSTANT
-        print(f"Congratulations! You can now carry {player_in["capacity"]} items!")
-    else:
-        player_in["torch_level"] += 1
-        print(f"Congratulations! Your torch level is now level {player_in['torch_level']}.")
-    return None
-
-
 def shop_menu(player_in: dict[str, str | int]) -> None:
     """Simulates the interaction of shop menu
 
@@ -1224,8 +1223,7 @@ def create_save_folders() -> None:
         except PermissionError:
             assert False, f"Permission denied: Unable to create '{full_dir_path}'."
         except Exception as exp:
-            # assert False, f"An error occurred while attempting creating {full_dir_path}: {exp}"
-            print(exp) # FIXME IN DEBUG MODE
+            assert False, f"An error occurred while attempting creating {full_dir_path}: {exp}"
 
 
 def load_high_scores() -> None: # FIXME
@@ -1280,7 +1278,6 @@ def main():
             town_menu(player_in=player, current_map_in=current_map, fog_in=fog)
         else:
             raise ValueError(f"game_state cannot be {game_state}")
-
     print("Thanks for playing")
 
 

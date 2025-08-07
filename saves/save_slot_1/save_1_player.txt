@@ -1,4 +1,4 @@
-name,Bob
+name,Bob, the builder
 x,0
 y,0
 copper,0
