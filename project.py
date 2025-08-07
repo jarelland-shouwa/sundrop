@@ -141,7 +141,6 @@ def get_pos_in_square(x: int, y: int,
 
     valid_positions: list[dict[str, int]] = []
     # invalid_positions: list[dict[str, int]] = []
-
     sq_range: range = sq_increment_range(torch_level)
 
     for i in sq_range:
@@ -459,7 +458,7 @@ def draw_map(fog_in: list[list[str]],
     print(output_text)
 
 
-# Template
+# Template ✅✅✅
 def draw_view(current_map_in: list[list[str]],
               player_in: dict[str, str | int], fog_in: list[list[str]]) -> None:
     """This function draws the 3x3 viewport. (adjusted by torch level)
@@ -491,15 +490,16 @@ def draw_view(current_map_in: list[list[str]],
             col_n: int = x + j
 
             is_at_player_position: bool = are_equal(y1=y, y2=row_n, x1=x, x2=col_n)
+            not_fog: bool = fog_in[row_n][col_n] == " "
 
             if is_at_player_position: # Draws player
                 mine_row += "M"
-            elif is_within(height=MAP_HEIGHT, width=MAP_WIDTH, x=col_n, y=row_n):
-                mine_row += fog_in[row_n][col_n]
-            elif -1 <= row_n <= MAP_HEIGHT and -1 <= col_n <= MAP_WIDTH:
+            elif is_within(height=MAP_HEIGHT, width=MAP_WIDTH, x=col_n, y=row_n) and not_fog:
+                mine_row += current_map_in[row_n][col_n]
+            elif -1 <= row_n <= MAP_HEIGHT and -1 <= col_n <= MAP_WIDTH: # Draws walls
                 mine_row += "#"
-            # else:
-            #     mine_row += " "
+            else: # Uncomment this for a fixed area
+                mine_row += " "
         if mine_row != "":
             mine_rows.append(mine_row)
 
@@ -875,10 +875,10 @@ def is_ore_minable(ore_found_input: str, player_in: dict[str, str | int]) -> boo
         f"too low, so you cannot mine {mineral_names[ore_found_input]}.")
     return False
 
-
+# ✅✅✅ (SHOULD BE DONE)
 def valid_move_checker(direction: str, move_value: int,
                        player_in: dict[str, str | int],
-                       fog_in: list[list[str]]) -> bool:
+                       current_map_in: list[list[str]]) -> bool:
     """Checks if a WASD move is valid.
 
     Parameters
@@ -889,8 +889,8 @@ def valid_move_checker(direction: str, move_value: int,
         magnitude of movement; can be -1 or 1
     player_in : dict[str, str  |  int]
         input for GLOBAL player (originally named player)
-    fog_in : list[list[str]]
-        input for GLOBAL fog (originally named fog)
+    current_map_in : list[list[str]]
+        input for GLOBAL game map (originally named game_map)
 
     Returns
     -------
@@ -917,7 +917,7 @@ def valid_move_checker(direction: str, move_value: int,
     # Determines new hypothetical position and square
     position_to_check: dict[str, int] = {"x": player_in["x"], "y": player_in["y"]}
     position_to_check[direction] += move_value
-    # print(f"{position_to_check["x"]}, {position_to_check['y']}")
+    # print(f"New position: {position_to_check["x"]}, {position_to_check['y']}")
 
     # Checks if hypothetical position is within map boundaries
     if not is_within(height=MAP_HEIGHT, width=MAP_WIDTH,
@@ -926,16 +926,16 @@ def valid_move_checker(direction: str, move_value: int,
         return False
 
     # Determines new hypothetical square
-    square_to_check: str = fog_in[position_to_check["y"]][position_to_check["x"]]
+    square_to_check: str = current_map_in[position_to_check["y"]][position_to_check["x"]]
 
     # Checks if player's backpack is full and if the square to be stepped on is a mineral
     is_player_backpack_full: bool = sum_ores_in_backpack(player_in=player_in) == player_in["capacity"]
-    is_next_square_a_mineral: bool = square_to_check in list(key for key in mineral_names)
+    is_next_square_a_mineral: bool = square_to_check in mineral_names
+
     if is_player_backpack_full and is_next_square_a_mineral:
         print("You can't carry any more, so you can't go that way.")
         return False
-
-    if square_to_check in mineral_names:
+    if is_next_square_a_mineral:
         return is_ore_minable(ore_found_input=square_to_check, player_in=player_in)
 
     return True # Move to a non-ore square
@@ -967,7 +967,7 @@ def process_ore_into_backpack(ore_found_input: str, player_in: dict[str, str | i
 
 def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int],
                      current_map_in: list[list[str]],
-                     fog_in: list[list[str]])-> None: # FIXME Modulise this
+                     fog_in: list[list[str]])-> None:
     """Simulates movement in the mine (WASD input in Mine Menu)
 
     Parameters
@@ -993,7 +993,7 @@ def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int
     move_value: int = WASD_TO_DIRECTION_AND_MOVE_VALUE[mine_menu_choice_input]["move_value"]
 
     if valid_move_checker(direction=direction, move_value=move_value,
-                          player_in=player_in, fog_in=fog_in):
+                          player_in=player_in, current_map_in=current_map_in):
         # Restore square to be stepped away (was previously covered by player avatar)
         fog_in[player_in["y"]][player_in["x"]] = current_map_in[player_in["y"]][player_in["x"]]
 
