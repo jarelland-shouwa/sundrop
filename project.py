@@ -50,7 +50,7 @@ SAVE_SLOT_DIRECTORY_PREFIX: str = "saves/save_slot"
 # E.g. saves/save_slot_1 (to be done by get_save_slot_dir)
 
 game_state: str = "main" # can be "main", "exit", "town", "mine"
-FILES_TO_SAVE: tuple[str, str, str] = ("fog", "map", "player")
+FILES_TO_SAVE: tuple[str, str, str] = ("fog", "current_map", "player")
 
 TOWN_POSITION: tuple[int, int] = (0, 0)
 TORCH_LEVEL_LIMIT: int = 3
@@ -124,14 +124,14 @@ def are_equal(y1: int, y2: int, x1: int, x2: int) -> bool:
     '''Checks if two positions are equal.'''
     return x1 == x2 and y1 == y2
 
-
+# ✅✅✅
 def get_pos_in_square(x: int, y: int,
                                   list_height: int,
                                   list_width: int,
                                   torch_level: int) -> list[dict[str, int]]:
     """Returns positions that are within a square of side 3
     (adjusted by torch_level) as the (x,y) the centre.
-    I.e. positions that are within a Manhattan Distance of 2 units, exclduing (x,y)
+    I.e. positions that are within a Manhattan Distance of 2 units,
 
     Returns
     -------
@@ -150,9 +150,9 @@ def get_pos_in_square(x: int, y: int,
             col_n: int = x + j
 
             # Excludes the centre of the square
-            is_centre: bool = are_equal(y1=y, y2=row_n, x1=x, x2=col_n)
+            # is_centre: bool = are_equal(y1=y, y2=row_n, x1=x, x2=col_n)
 
-            if is_within(height=list_height, width=list_width, x=col_n, y=row_n) and not is_centre:
+            if is_within(height=list_height, width=list_width, x=col_n, y=row_n):
                 valid_positions.append({"x": col_n, "y": row_n})
             # else:
             #     invalid_positions.append({"x": col_n, "y": row_n})
@@ -313,16 +313,13 @@ def load_map(filename: str, map_struct: list) -> None:
         MAP_HEIGHT = len(map_struct)
 
 
-# Template
-def clear_fog(current_map_in: list[list[str]], fog_in: list[list[str]],
-              player_in: dict[str, str | int]) -> None:
+# Template ✅✅✅
+def clear_fog(fog_in: list[list[str]], player_in: dict[str, str | int]) -> None:
     """This function clears the fog of war at the 3x3
     square around the player. (adjusted by torch level)
 
     Parameters
     ----------
-    current_map_in : list[list[str]]
-        input for GLOBAL game map (originally named game_map)
     fog_in : list[list[str]]
         input for GLOBAL fog (originally named fog)
     player_in : dict[str, str  |  int]
@@ -338,10 +335,11 @@ def clear_fog(current_map_in: list[list[str]], fog_in: list[list[str]],
     for position in positions_to_update:
         y = position["y"]
         x = position["x"]
-        fog_in[y][x] = current_map_in[y][x]
+        # fog_in[y][x] = current_map_in[y][x]
+        fog_in[y][x] = " "
 
 
-# Template
+# Template ✅✅✅
 def initialize_game(current_map_in: list[list[str]],
                     fog_in: list[list[str]], player_in: dict[str, str | int]) -> None:
     """Initiliases current_map, fog and player information.
@@ -361,7 +359,7 @@ def initialize_game(current_map_in: list[list[str]],
     current_save_slot = choose_new_save_slot()
     name: str = validate_input("Greetings, miner! What is your name? ", r"^[^,\n\t]+$", False)
 
-    # initialise map
+    # initialise current map
     current_map_in.clear()
     try:
         load_map(filename="level1.txt", map_struct=current_map_in)
@@ -373,7 +371,7 @@ def initialize_game(current_map_in: list[list[str]],
     for _ in range(MAP_HEIGHT):
         row: list[str] = ["?" for _ in range(MAP_WIDTH)]
         fog_in.append(row)
-    fog_in[0][0] = "M"
+    # fog_in[0][0] = "M"
 
     # initialise player
     player_in.clear()
@@ -396,13 +394,13 @@ def initialize_game(current_map_in: list[list[str]],
     player_in["torch_level"] = 1
     player_in["total_GP"] = 0
 
-    clear_fog(current_map_in=current_map_in, fog_in=fog_in, player_in=player_in)
-
+    clear_fog(fog_in=fog_in, player_in=player_in)
     print(f"Pleased to meet you, {name}. Welcome to Sundrop Town!")
 
 
-# Template
-def draw_map(fog_in: list[list[str]], player_in: dict[str, str | int]) -> None:
+# Template ✅✅✅ NOTE NEED TO CHECK IF walked_to_town WORKS
+def draw_map(fog_in: list[list[str]],
+             player_in: dict[str, str | int], current_map_in: list[list[str]]) -> None:
     """This function draws the entire map, covered by the fog if applicable.
     Accounts for special cases:
     1. Player in town
@@ -414,30 +412,47 @@ def draw_map(fog_in: list[list[str]], player_in: dict[str, str | int]) -> None:
         input for GLOBAL fog variable (originally named fog) [or can be any 2D list]
     player_in : dict[str, str  |  int]
         input for GLOBAL player (originally named player)
-    
-    Unused parameters from template TODO
-    -----------------
-    current_map
+    current_map_in : list[list[str]]
+        input for GLOBAL game map (originally named game_map)
     """
 
-    # in_town: bool = (player_in["x"], player_in["y"]) == TOWN_POSITION
-    # FIXME DOESN'T WORK; NEED TO ACCOUNT FOR PORTAL
-    in_town: bool = False
-    if game_state == "town":
-        in_town = True
+    used_portal_to_town = (player_in["y"], player_in["x"]) != TOWN_POSITION and game_state == "town"
+    walked_to_town = (player_in["y"], player_in["x"]) == TOWN_POSITION and game_state == "town"
+    in_mine = game_state == "mine"
 
     output_text: str = f"\n+{"-"*MAP_WIDTH}+\n"
     for i in range(MAP_HEIGHT):
         row_text: str = ""
         for j in range(MAP_WIDTH):
-            if in_town and (i,j) == TOWN_POSITION: # Special case 1
-                row_text += "M"
-                continue
-            if in_town and fog_in[i][j] == "M": # Special case 2
-                row_text += "P"
-                continue
-
-            row_text += fog_in[i][j]
+            # if in_town and (player_in["y"], player_in["x"]) == TOWN_POSITION: # Special case 1
+            #     row_text += "M"
+            #     continue
+            # if in_town and (player_in["y"], player_in["x"]) != TOWN_POSITION: # Special case 2
+            #     row_text += "P"
+            #     continue
+            if used_portal_to_town:
+                if (i,j) == TOWN_POSITION:
+                    row_text += "M"
+                elif (i,j) == (player_in["y"], player_in["x"]):
+                    row_text += "P"
+                elif fog_in[i][j] == " ":
+                    row_text += current_map_in[i][j]
+                else:
+                    row_text += "?"
+            elif walked_to_town:
+                if (i,j) == TOWN_POSITION:
+                    row_text += "M"
+                elif fog_in[i][j] == " ":
+                    row_text += current_map_in[i][j]
+                else:
+                    row_text += "?"
+            elif in_mine:
+                if (i,j) == (player_in["y"], player_in["x"]):
+                    row_text += "M"
+                elif fog_in[i][j] == " ":
+                    row_text += current_map_in[i][j]
+                else:
+                    row_text += "?"
         output_text += f"|{row_text}|\n"
     output_text += f"+{"-"*MAP_WIDTH}+"
 
@@ -465,7 +480,7 @@ def draw_view(current_map_in: list[list[str]],
     sq_range: range = sq_increment_range(player_in["torch_level"])
 
     # Ensures that if torch is upgraded, viewport is affected too
-    clear_fog(current_map_in=current_map_in, fog_in=fog_in, player_in=player_in)
+    clear_fog(fog_in=fog_in, player_in=player_in)
 
     mine_rows: list[list[str]] = []
 
@@ -514,9 +529,9 @@ def save_game(save_slot_number: int, current_map_in: list[list[str]],
         input for GLOBAL player (originally named player)
     """
 
-    # Saving game map
+    # Saving current map
     save_list_to_txt(get_full_directory(slot_number=save_slot_number,
-                                        data_name="map"), current_map_in)
+                                        data_name="current_map"), current_map_in)
 
     # Saving fog
     save_list_to_txt(get_full_directory(slot_number=save_slot_number,
@@ -534,7 +549,7 @@ def save_game(save_slot_number: int, current_map_in: list[list[str]],
     print(f"Saved to save slot {save_slot_number}")
 
 
-# Template
+# Template ✅✅✅
 def load_game(save_slot_number: int, current_map_in: list[list[str]],
               fog_in: list[list[str]], player_in: dict[str, str | int]) -> bool:
     """This function loads the game.
@@ -558,7 +573,7 @@ def load_game(save_slot_number: int, current_map_in: list[list[str]],
 
     try:
         # load map
-        load_map(filename=get_full_directory(slot_number=save_slot_number, data_name="map"),
+        load_map(filename=get_full_directory(slot_number=save_slot_number, data_name="current_map"),
                   map_struct=current_map_in)
 
         # load fog
@@ -579,15 +594,6 @@ def load_game(save_slot_number: int, current_map_in: list[list[str]],
             except ValueError:
                 pass
             player_in[key] = value
-            # split_datum: list[str | int] = datum.split(",")
-            # try: # typecasting strings into floats and integers
-            #     if "." in split_datum[1]:
-            #         split_datum[1] = float(split_datum[1])
-            #     else:
-            #         split_datum[1] = int(split_datum[1])
-            #     player_in[split_datum[0]] = split_datum[1]
-            # except ValueError: # for strings
-            #     player_in[split_datum[0]] = split_datum[1]
 
         # Sets the prices for that day.
         set_prices()
@@ -961,7 +967,7 @@ def process_ore_into_backpack(ore_found_input: str, player_in: dict[str, str | i
 
 def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int],
                      current_map_in: list[list[str]],
-                     fog_in: list[list[str]])-> None: # -> bool FIXME Modulise this
+                     fog_in: list[list[str]])-> None: # FIXME Modulise this
     """Simulates movement in the mine (WASD input in Mine Menu)
 
     Parameters
@@ -993,7 +999,7 @@ def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int
 
         player_in[direction] += move_value # Update player position
 
-        clear_fog(current_map_in=current_map_in, fog_in=fog_in, player_in=player_in)
+        clear_fog(fog_in=fog_in, player_in=player_in)
 
         square_stepped: str = fog_in[player_in["y"]][player_in["x"]]
 
@@ -1030,7 +1036,7 @@ def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int
 
 
 def main_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
-              player_in: dict[str, str | int]) -> None: # -> bool
+              player_in: dict[str, str | int]) -> None:
     """Simulates the interaction of main menu.
 
     Parameters
@@ -1144,7 +1150,7 @@ def shop_menu(player_in: dict[str, str | int]) -> None:
 
 
 def mine_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
-              player_in: dict[str, str | int]) -> None: # -> bool
+              player_in: dict[str, str | int]) -> None:
     """Simulates the interaction of mine menu.
 
     Parameters
@@ -1176,7 +1182,7 @@ def mine_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
                 new_day(player_in=player_in)
                 break
         elif mine_menu_choice == "m":
-            draw_map(fog_in=fog_in, player_in=player_in)
+            draw_map(fog_in=fog_in, player_in=player_in, current_map_in=current_map_in)
         elif mine_menu_choice == "i":
             show_information(menu_type="mine", player_in=player_in)
         elif mine_menu_choice == "p":
@@ -1220,7 +1226,7 @@ def town_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
         elif town_menu_choice == "i":
             show_information(menu_type="town", player_in=player_in)
         elif town_menu_choice == "m":
-            draw_map(fog_in=fog_in, player_in=player_in)
+            draw_map(fog_in=fog_in, player_in=player_in, current_map_in=current_map_in)
         elif town_menu_choice == "e":
             mine_menu(player_in=player_in, current_map_in=current_map_in, fog_in=fog_in)
 
@@ -1248,7 +1254,8 @@ def create_save_folders() -> None:
         except PermissionError:
             assert False, f"Permission denied: Unable to create '{full_dir_path}'."
         except Exception as exp:
-            assert False, f"An error occurred while attempting creating {full_dir_path}: {exp}"
+            # assert False, f"An error occurred while attempting creating {full_dir_path}: {exp}"
+            print(exp) # FIXME IN DEBUG MODE
 
 
 def load_high_scores() -> None: # FIXME
