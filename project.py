@@ -52,10 +52,15 @@ SAVE_SLOT_DIRECTORY_PREFIX: str = "saves/save_slot"
 game_state: str = "main" # can be "main", "exit", "town", "mine"
 FILES_TO_SAVE: tuple[str, str, str] = ("fog", "map", "player")
 
-TOWN_POSITION = (0, 0)
-TORCH_LEVEL_LIMIT = 3
-BACKPACK_UPGRADE_CONSTANT = 2 # Used to find 1. cost of backpack upgrade and 2. capacity increase
-TORCH_UPGRADE_MULTIPLIER = 25
+TOWN_POSITION: tuple[int, int] = (0, 0)
+TORCH_LEVEL_LIMIT: int = 3
+BACKPACK_UPGRADE_CONSTANT: int = 2 # Used to find 1. cost of backpack upgrade
+# and 2. capacity increase
+TORCH_UPGRADE_MULTIPLIER: int = 25
+
+high_score_records: dict = {}
+TOP_PLAYERS_QUANTITY: int = 5
+ARCHIVE_FILE_NAME: str = "past_players.txt"
 # ------------------------- GENERAL Functions -------------------------
 
 
@@ -80,14 +85,19 @@ def validate_input(message: str, regex: str, is_single: bool) -> str:
         has_invalid_spaces: bool = user_input.startswith(" ") or user_input.endswith(" ")
         has_new_lines: bool = user_input.find("\n") != -1
         has_invalid_whitespaces: bool = has_invalid_spaces or has_new_lines or has_tabs
+        duplicate_name: bool = user_input in high_score_records
 
-        if re.match(regex, user_input) and not has_invalid_whitespaces:
+        if re.match(regex, user_input) and not has_invalid_whitespaces and not duplicate_name:
             return user_input
 
         if user_input == "":
             print("Please enter a valid input instead of nothing.")
+        elif "," in user_input:
+            print("Commas (,) are not allowed. Please enter input without it.")
         elif has_invalid_whitespaces:
             print("Please enter a valid input that does not contain unnecessary/invalid whitespace.")
+        elif duplicate_name:
+            print("That name has already been taken. Please enter another name.")
         else:
             print(f"{user_input} is invalid. Please enter a valid input.")
 
@@ -384,7 +394,7 @@ def initialize_game(game_map_in: list[list[str]],
     player_in["valid_minable_ores"] = "C"
     # ^ uses first letters of minerals to check if player can mine
     player_in["torch_level"] = 1
-    player_in["totalGP"] = 0
+    player_in["total_GP"] = 0
 
     clear_fog(game_map_in=game_map_in, fog_in=fog_in, player_in=player_in)
 
@@ -740,12 +750,24 @@ def show_game_won(player_in: dict[str, str | int]) -> None:
     print("-------------------------------------------------------------")
     print(f"Woo-hoo! Well done, Cher, you have {player_in["GP"]} GP!")
     print("You now have enough to retire and play video games every day.")
-    print(f"And it only took you {player_in["day"]} days and "
+    print(f"And it only took you {player_in["day"]} day(s) and "
           f"{player_in["steps"]} steps! You win!")
     print("-------------------------------------------------------------")
 
 
 # ------------------------- Various functions that are used in Menus -------------------------
+def archive_data(player_in) -> None:
+    """Saves the data of a player that has won the game to archive file."""
+    # FIXME
+    with open(ARCHIVE_FILE_NAME, "w", encoding="utf-8") as f:
+        text_to_write: str = ""
+        for record in high_score_records:
+            text_to_write += f"{record},{high_score_records[record]["day"]},{high_score_records[record]["steps"]},{high_score_records[record]["total_GP"]}\n"
+            print(record)
+        print(player_in)
+        text_to_write += f"{player_in["name"]},{player_in["day"]},{player_in["steps"]},{player_in["total_GP"]}\n"
+        print("Added player")
+        f.write(text_to_write)
 
 
 def new_day(player_in: dict[str, str | int]) -> None:
@@ -809,7 +831,7 @@ def sell_ores(player_in: dict[str, str | int]) -> bool:
             gp_sold: int = player_in[mineral] * current_prices[mineral]
             print(f"You sell {player_in[mineral]} {mineral} ore for {gp_sold} GP.")
             player_in["GP"] += gp_sold
-            player_in["totalGP"] += gp_sold
+            player_in["total_GP"] += gp_sold
             player_in[mineral] = 0
             have_sold_stuff = True
 
@@ -819,6 +841,7 @@ def sell_ores(player_in: dict[str, str | int]) -> bool:
         show_game_won(player_in=player_in)
         save_game(save_slot_number=current_save_slot,
                   game_map_in=game_map, fog_in=fog, player_in=player_in)
+        archive_data(player_in=player_in)
         return True
     return False
 
@@ -1255,6 +1278,20 @@ def create_save_folders() -> None:
             assert False, f"An error occurred while attempting creating {full_dir_path}: {exp}"
 
 
+def load_high_scores() -> None:
+    """Reads the past players nfo who have have
+    won (to be used to show high scores)"""
+
+    with open(ARCHIVE_FILE_NAME, "r", encoding="utf-8") as f:
+        info: str = f.read().strip()
+    if info != "":
+        data = info.split("\n")
+        for i in range(len(data)):
+            data[i] = data[i].split(",")
+            high_score_records[data[i][0]] = {"day": data[i][1], "steps": data[i][2], "total_GP": data[i][3]}
+    print(high_score_records)
+
+
 #--------------------------- MAIN GAME ---------------------------
 def main():
     """Main game
@@ -1264,6 +1301,13 @@ def main():
     ValueError
         Raised if value of game_state is invalid.
     """
+
+    # Create file that archives past players' data
+    try:
+        f = open(ARCHIVE_FILE_NAME, "r", encoding="utf-8")
+    except FileNotFoundError:
+        f = open(ARCHIVE_FILE_NAME, "w", encoding="utf-8")
+    f.close()
 
     create_save_folders()
 
@@ -1282,6 +1326,7 @@ def main():
         #                                      player_in=player) # TRUE = CONTINUE
         # if not continue_from_main:
         #     break
+        load_high_scores() # MAY CHANGE NOTE
         main_menu(game_map_in=game_map, fog_in=fog, player_in=player)
 
         if game_state == "exit":
