@@ -5,12 +5,13 @@
 # as the description of the functions.
 '''
 
-from random import randint
+from random import randint, random
 import os
 import re
 
 player: dict[str, str | int] = {}
 current_map: list[list[str]] = [] # originally named game_map
+level_map: list[list[str]] = []
 fog: list[list[str]] = []
 
 MAP_WIDTH: int = 0
@@ -54,6 +55,7 @@ FILES_TO_SAVE: tuple[str, str, str] = ("fog", "current_map", "player")
 
 TOP_PLAYERS_QUANTITY: int = 5
 ARCHIVE_FILE_NAME: str = "past_players.txt"
+LEVEL_MAP: str = "level1.txt"
 
 TOWN_POSITION: tuple[int, int] = (0, 0)
 
@@ -66,6 +68,7 @@ BACKPACK_UPGRADE_CONSTANT: int = 2 # Used to find 1. cost of backpack upgrade
 # and 2. capacity increase
 TORCH_UPGRADE_MULTIPLIER: int = 25
 
+ORE_REPLENISH_RATE = 0.20
 
 # ------------------------- GENERAL Functions -------------------------
 
@@ -364,7 +367,7 @@ def initialize_game(current_map_in: list[list[str]],
     # initialise current map
     current_map_in.clear()
     try:
-        load_map(filename="level1.txt", map_struct=current_map_in)
+        load_map(filename=LEVEL_MAP, map_struct=current_map_in)
     except FileNotFoundError:
         print("FileNotFoundError; Please check that the level map exists again.")
 
@@ -768,18 +771,25 @@ def archive_data(player_in) -> None:
         f.write(text_to_write)
 
 
-def new_day(player_in: dict[str, str | int]) -> None:
+def new_day(player_in: dict[str, str | int],
+            current_map_in: list[list[str]]) -> None:
     """When a new day passes, does the following.
+    Resets number of turns.
+    Sets prices.
+    Replenish ores (if applicable).
 
     Parameters
     ----------
     player_in : dict[str, str  |  int]
         input for GLOBAL player (originally named player)
+    current_map_in : list[list[str]]
+        input for GLOBAL game map (originally named game_map)
     """
 
     player_in["turns"] = TURNS_PER_DAY
     player_in["day"] += 1
     set_prices()
+    replenish_ores(current_map_in=current_map_in)
 
 
 def sum_ores_in_backpack(player_in: dict[str, str | int]) -> int:
@@ -1030,6 +1040,24 @@ def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int
     return None
 
 
+def replenish_ores(current_map_in: list[list[str]]) -> None:
+    """When called (when a new day passes), replenishes ores based on
+    ORE_REPLENISH_RATE.
+
+    Parameters
+    ----------
+    current_map_in : list[list[str]]
+        input for GLOBAL game map (originally named game_map)
+    """
+
+    for i in range(MAP_HEIGHT):
+        for j in range(MAP_WIDTH):
+            can_replenish: bool = level_map[i][j] in mineral_names and current_map_in[i][j] == " "
+            if random() <= ORE_REPLENISH_RATE and can_replenish:
+                # print(f"{mineral_names[level_map[i][j]]} Ore at ({j},{i}) has replenished!")
+                current_map_in[i][j] = level_map[i][j]
+
+
 # ------------------------- Menu Functions -------------------------
 
 
@@ -1155,7 +1183,7 @@ def mine_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
             movement_in_mine(mine_menu_choice_input=mine_menu_choice,
                              player_in=player_in, current_map_in=current_map_in, fog_in=fog_in)
             if game_state == "town":
-                new_day(player_in=player_in)
+                new_day(player_in=player_in, current_map_in=current_map_in)
                 break
         elif mine_menu_choice == "m":
             draw_map(fog_in=fog_in, player_in=player_in, current_map_in=current_map_in)
@@ -1164,7 +1192,7 @@ def mine_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
         elif mine_menu_choice == "p":
             print("You place your portal stone here and zap back to town.")
             game_state = "town"
-            new_day(player_in=player_in)
+            new_day(player_in=player_in, current_map_in=current_map_in)
             break
         else:
             game_state = "main"
@@ -1265,6 +1293,7 @@ def main():
     f.close()
 
     create_save_folders()
+    load_map(filename=LEVEL_MAP, map_struct=level_map)
 
     # game_state: str = 'main'
     print("---------------- Welcome to Sundrop Caves! ----------------")
