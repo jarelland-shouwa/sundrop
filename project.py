@@ -65,6 +65,8 @@ TORCH_LEVEL_LIMIT: int = 3
 BACKPACK_UPGRADE_CONSTANT: int = 2 # Used to find 1. cost of backpack upgrade
 # and 2. capacity increase
 TORCH_UPGRADE_MULTIPLIER: int = 25
+
+
 # ------------------------- GENERAL Functions -------------------------
 
 
@@ -122,21 +124,15 @@ def save_list_to_txt(filename: str, input_list: list) -> None:
         save_file_map.write(text_to_write)
 
 
-def is_within(height: int, width: int, x: int, y: int) -> bool:
-    '''Checks if a position is within the boundaries of a 2D list.'''
-    return 0 <= y <= (height-1) and 0 <= x <= (width-1)
+def is_within(height: int, width: int, x: int, y: int, lower_limit: int = 0) -> bool:
+    '''Checks if a position is within the boundaries of a 2D list.
+    Can be reused for other purposes if lower_limit is specified.'''
+    return lower_limit <= y <= (height-1) and lower_limit <= x <= (width-1)
 
 
 def are_equal(y1: int, y2: int, x1: int, x2: int) -> bool:
     '''Checks if two positions are equal.'''
     return x1 == x2 and y1 == y2
-
-
-def get_full_directory(slot_number: int, data_name: str) -> str:
-    '''Returns the full directory path for a txt file to be saved in a save slot.'''
-    directory_name: str = get_save_slot_dir(number=slot_number)
-    file_name: str = get_file_name(slot_number=slot_number, data_name=data_name)
-    return f"{directory_name}/{file_name}"
 
 
 def sq_increment_range(torch_level_in: int) -> range:
@@ -178,8 +174,9 @@ def get_pos_in_square(x: int, y: int,
                                   list_width: int,
                                   torch_level: int) -> list[dict[str, int]]:
     """Returns positions that are within a square of side 3
-    (adjusted by torch_level) as the (x,y) the centre.
+    as (x,y) the centre.
     I.e. positions that are within a Manhattan Distance of 2 units.
+    [adjusted by torch_level]
 
     Returns
     -------
@@ -201,6 +198,13 @@ def get_pos_in_square(x: int, y: int,
             # else:
             #     invalid_positions.append({"x": col_n, "y": row_n})
     return valid_positions
+
+
+def get_full_directory(slot_number: int, data_name: str) -> str:
+    '''Returns the full directory path for a txt file to be saved in a save slot.'''
+    directory_name: str = get_save_slot_dir(number=slot_number)
+    file_name: str = get_file_name(slot_number=slot_number, data_name=data_name)
+    return f"{directory_name}/{file_name}"
 
 
 def get_file_name(slot_number: int, data_name: str) -> str:
@@ -475,13 +479,16 @@ def draw_view(current_map_in: list[list[str]],
             col_n: int = x + j
 
             is_at_player_position: bool = are_equal(y1=y, y2=row_n, x1=x, x2=col_n)
-            not_fog: bool = fog_in[row_n][col_n] == NON_FOG_CHAR
-
             if is_at_player_position: # Draws player
                 mine_row += PLAYER_CHAR
-            elif is_within(height=MAP_HEIGHT, width=MAP_WIDTH, x=col_n, y=row_n) and not_fog:
-                mine_row += current_map_in[row_n][col_n]
-            elif -1 <= row_n <= MAP_HEIGHT and -1 <= col_n <= MAP_WIDTH: # Draws walls
+                continue
+
+            if is_within(height=MAP_HEIGHT, width=MAP_WIDTH, x=col_n, y=row_n):
+                not_fog: bool = fog_in[row_n][col_n] == NON_FOG_CHAR
+                if not_fog:
+                    mine_row += current_map_in[row_n][col_n]
+            elif is_within(height=MAP_HEIGHT+1, width=MAP_WIDTH+1,
+                        x=col_n, y=row_n, lower_limit=-1):# Draws walls
                 mine_row += "#"
             else: # Uncomment this for a fixed area
                 mine_row += " "
