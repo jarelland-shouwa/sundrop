@@ -53,7 +53,6 @@ SAVE_SLOT_DIRECTORY_PREFIX: str = "saves/save_slot"
 
 FILES_TO_SAVE: tuple[str, str, str] = ("fog", "current_map", "player")
 
-TOP_PLAYERS_QUANTITY: int = 5
 ARCHIVE_FILE_NAME: str = "past_players.txt"
 LEVEL_MAP: str = "level1.txt"
 
@@ -69,6 +68,14 @@ BACKPACK_UPGRADE_CONSTANT: int = 2 # Used to find 1. cost of backpack upgrade
 TORCH_UPGRADE_MULTIPLIER: int = 25
 
 ORE_REPLENISH_RATE = 0.20
+
+# For printing high scores
+TOP_PLAYERS_QUANTITY: int = 5
+RANK_WIDTH: int = 6
+NAME_WIDTH: int = 20
+DAY_WIDTH: int = 5
+STEP_WIDTH: int = 6
+TOTAL_GP_WIDTH: int = 17
 
 # ------------------------- GENERAL Functions -------------------------
 
@@ -773,19 +780,41 @@ def show_game_won(player_in: dict[str, str | int]) -> None:
     print("-------------------------------------------------------------")
 
 
-def show_high_scores():
-    # print(f"{"HIGH SCORES":,^-50}")
-    # message = 'Hi'
-    # refer to
-    # https://medium.com/@johnidouglasmarangon/padding-f-strings-in-python-977b17edbd36
-    fill = '-'
-    align = '^'
-    width = 50
-    row_to_print = ""
-    print(f'{"High scores":{fill}{align}{width}}')
-    for record in high_score_records:
-        row_to_print += f"{record["name"]} {record["day"]} {record["steps"]} {record["total_GP"]}\n"
-    print(row_to_print)
+def show_high_scores() -> None:
+    """Shows the players with the top n high scores,
+    where n = TOP_PLAYERS_QUANTITY
+    """
+
+    output: str = ""
+    if len(high_score_records) == 0:
+        print("There are no past high scores. Start a new game to try to get a high score!")
+    else:
+        headers: str = (f"|{" Rank ":^{RANK_WIDTH}}|{"Name":<{NAME_WIDTH}}|"
+                        f"{"Day":^{DAY_WIDTH}}|{"Step":^{STEP_WIDTH}}|"
+                        f"{"Total GP earned":^{TOTAL_GP_WIDTH}}|\n")
+        output = f'{" High scores ":-^{len(headers)}}\n' + headers
+
+        rank: int = 1
+        for record in high_score_records[:TOP_PLAYERS_QUANTITY]:
+            output += (f"|{rank:^{RANK_WIDTH}}|"
+                             f"{record["name"][:NAME_WIDTH]:<{NAME_WIDTH}}|"
+                             f"{record["day"]:^{DAY_WIDTH}}|"
+                             f"{record["steps"]:^{STEP_WIDTH}}|"
+                             f"{record["total_GP"]:^{TOTAL_GP_WIDTH}}|\n")
+            if len(record["name"]) > NAME_WIDTH: # Allows for overflow
+                start_index: int = NAME_WIDTH
+                while True:
+                    segment: str = record["name"][start_index:start_index + NAME_WIDTH]
+                    output += (f"|{"":^{RANK_WIDTH}}|{segment:<{NAME_WIDTH}}|"
+                                     f"{"":^{DAY_WIDTH}}|{"":^{STEP_WIDTH}}|"
+                                     f"{"":^{TOTAL_GP_WIDTH}}|\n")
+                    start_index += NAME_WIDTH
+                    excess: str = record["name"][start_index:]
+                    if excess == "":
+                        break
+            output += f'{"":-^{len(headers)}}\n'
+            rank += 1
+        print(output.strip())
 
 
 # ------------------------- Various functions that are used in Menus -------------------------
@@ -795,27 +824,43 @@ def archive_data() -> None:
     with open(ARCHIVE_FILE_NAME, "w", encoding="utf-8") as f:
         text_to_write: str = ""
         for record in high_score_records:
-            text_to_write += f"{record["day"]},{record["steps"]},{record["total_GP"]},{record["name"]}\n"
-        print(f"What s being saved: {text_to_write}")
+            text_to_write += (f"{record["day"]},{record["steps"]},"
+                              f"{record["total_GP"]},{record["name"]}\n")
         f.write(text_to_write)
 
 
 def insert_player_data(player_in) -> None:
+    """Inserts new player data that has just won the game into high_score_records.
 
-    global high_score_records
-    record_to_add = {"name": player_in["name"], "day": player_in["day"], "steps": player_in["steps"], "total_GP": player_in["total_GP"]}
+    Notes
+    -----
+    Let largest value = l\\
+    Let smallest value = s
+
+    Operator > means to sort column by ASCENDING ORDER
+    (i.e. l listed first; s listed last)\\
+    Operator < means to sort column by DESCENDING ORDER
+    (i.e. s listed first; s listed last)
+
+    Parameters
+    ----------
+    player_in : dict[str, str  |  int]
+        input for GLOBAL player (originally named player)
+    """
+
+    record_to_add: dict = {"name": player_in["name"], "day": player_in["day"],
+                           "steps": player_in["steps"], "total_GP": player_in["total_GP"]}
     if len(high_score_records) == 0:
         high_score_records.append(record_to_add)
     else:
-        max_i = 0
+        max_i: int = 0
         for i, record in enumerate(high_score_records):
             if player_in["day"] == record["day"]:
                 if player_in["steps"] == record["steps"]:
-                    if player_in["total_GP"] > record["total_GP"]: # > FOR ASCENDING ORDER (BOTTOM TO TOP)
+                    if player_in["total_GP"] > record["total_GP"]:
                         max_i = i
                         break
-                    else:
-                        max_i += 1
+                    max_i += 1
                 elif player_in["steps"] < record["steps"]:
                     max_i = i
                     break
@@ -824,7 +869,7 @@ def insert_player_data(player_in) -> None:
             elif player_in["day"] < record["day"]:
                 max_i = i
                 break
-            elif player_in["day"] > record["day"]:
+            else:
                 max_i += 1
 
         high_score_records.insert(max_i, record_to_add)
@@ -1053,7 +1098,8 @@ def process_ore_into_backpack(ore_found_input: str, player_in: dict[str, str | i
         input for GLOBAL player (originally named player)
     """
 
-    remaining_space_in_backpack: int = player_in["capacity"] - sum_ores_in_backpack(player_in=player_in)
+    remaining_space_in_backpack: int = (player_in["capacity"]
+                                        - sum_ores_in_backpack(player_in=player_in))
     mineral_name: str = mineral_names[ore_found_input]
     pieces_found: int = randint(pieces_per_node[mineral_name][0], pieces_per_node[mineral_name][1])
 
@@ -1189,7 +1235,6 @@ def main_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
             print(f"Game loaded from save slot {current_save_slot}.")
             break
         if main_menu_choice == "h":
-            # print("High scores are still being implemented!")
             show_high_scores()
         if main_menu_choice == "q":
             game_state = "exit"
@@ -1356,9 +1401,8 @@ def load_high_scores() -> None:
         data = info.split("\n")
         for i in range(len(data)):
             data[i] = data[i].split(",", 3)
-            # print(data[i])
-            high_score_records.append({"name": data[i][3], "day": int(data[i][0]), "steps": int(data[i][1]), "total_GP": int(data[i][2])})
-    # print(f"What was loaded: {high_score_records}")
+            high_score_records.append({"name": data[i][3], "day": int(data[i][0]),
+                                       "steps": int(data[i][1]), "total_GP": int(data[i][2])})
 
 
 #--------------------------- MAIN GAME ---------------------------
@@ -1392,7 +1436,6 @@ def main():
     print("-----------------------------------------------------------")
 
     while True: # MAIN LOOP
-        # load_high_scores()
         main_menu(current_map_in=current_map, fog_in=fog, player_in=player)
 
         if game_state == "exit":
