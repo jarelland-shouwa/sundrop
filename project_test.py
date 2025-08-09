@@ -7,7 +7,8 @@ from project import (
     get_pos_in_square,
     get_full_directory,
     get_file_name,
-    get_save_slot_dir
+    get_save_slot_dir,
+    colourirse_str
 )
 
 

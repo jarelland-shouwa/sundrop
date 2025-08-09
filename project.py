@@ -77,7 +77,38 @@ DAY_WIDTH: int = 5
 STEP_WIDTH: int = 6
 TOTAL_GP_WIDTH: int = 17
 
+
+COLOUR_CODES = {"red": 91, "green": 92, "yellow ":93,
+             "lightpurple": 94, "purple": 95,
+             "cyan": 96, "lightgrey": 97, "black": 90}
+
 # ------------------------- GENERAL Functions -------------------------
+
+
+def colourirse_str(text: str, colour: str) -> str:
+    """_summary_
+
+    Parameters
+    ----------
+    text : str
+        the string to render in colour
+    colour : str
+        colour to render text in
+
+    Returns
+    -------
+    str
+        text rendered with specified colour
+
+    Raises
+    ------
+    ValueError
+        Raised if there is an invalid value for colour
+    """
+
+    if colour.lower() not in COLOUR_CODES:
+        raise ValueError(f"{colour} for colour is invalid.")
+    return f"\033[{COLOUR_CODES[colour.lower()]}m {text}\033[00m"
 
 
 def create_regex(valid_char: str) -> str:
@@ -260,32 +291,39 @@ def find_written_slots(mode: str) -> list[int]:
         raise ValueError(f"{mode} is invalid. Valid: {["save", "load"]}. Please check again.")
 
     save_slot_listing_text: str = ""
-    written_colour, empty_colour = 91, 92
+    written_colour, empty_colour = "red", "green"
     if mode == "save":
         save_slot_listing_text: str = "Select a save slot to save to.\n"
     elif mode == "load":
         save_slot_listing_text: str = "Select a save slot to load from.\n"
-        written_colour, empty_colour = 92, 91
+        written_colour, empty_colour = "green", "red"
 
     written_slots: list[int] = []
     for i in range(1, SAVE_SLOT_QUANTITY+1):
         try:
             files_in_dir: list[str] = os.listdir(get_save_slot_dir(number=i))
         except FileNotFoundError:
-            assert False, f"\033[91m{f"Slot {i}: EMPTY ; FileNotFoundError; Please check that this folder has been created."}\033[00m"
+            assert False, colourirse_str((f"Slot {i}: EMPTY ; FileNotFoundError; "
+                                          f"Please check that this folder has "
+                                          f"been created."), "red")
         else:
             files_needed: set = {get_file_name(i, name) for name in FILES_TO_SAVE}
 
-            # files_in_dir == [get_file_name(i, name) for name in FILES_TO_SAVE]
             if files_needed.issubset(set(files_in_dir)):
                 written_slots.append(i)
-                save_slot_listing_text += f"\033[{written_colour}m{f"Slot {i}: HAS BEEN WRITTEN TO\n"}\033[00m"
+                save_slot_listing_text += colourirse_str(f"Slot {i}: HAS BEEN WRITTEN TO\n",
+                                                         written_colour)
             elif 0 < len(files_in_dir) < len(FILES_TO_SAVE) and mode == "load":
-                save_slot_listing_text += f"\033[{empty_colour}m{f"Slot {i}: Incorrect number of files present. Check files again.\n"}\033[00m"
+                save_slot_listing_text += colourirse_str((f"Slot {i}: Incorrect number of"
+                                                          f" files present. Check files again.\n"),
+                                                          empty_colour)
             elif len(files_in_dir) == len(FILES_TO_SAVE) and mode == "load":
-                save_slot_listing_text += f"\033[{empty_colour}m{f"Slot {i}: Check files again. Could be file name or type of file issue.\n"}\033[00m"
+                save_slot_listing_text += colourirse_str((f"Slot {i}: Check files again. "
+                                                          f"Could be filename or "
+                                                          f"type of file issue.\n"), empty_colour)
             else:
-                save_slot_listing_text += f"\033[{empty_colour}m{f"Slot {i}: EMPTY ; No files in save folder\n"}\033[00m"
+                save_slot_listing_text += colourirse_str(f"Slot {i}: EMPTY ; "
+                                                         f"No files in save folder\n", empty_colour)
 
     # Lists whether a save slot is empty or has data already written to it.
     print(save_slot_listing_text)
@@ -829,7 +867,7 @@ def archive_data() -> None:
         f.write(text_to_write)
 
 
-def insert_player_data(player_in) -> None:
+def insert_player_data(player_in: dict[str, str | int]) -> None:
     """Inserts new player data that has just won the game into high_score_records.
 
     Notes
@@ -988,7 +1026,8 @@ def sell_ores(player_in: dict[str, str | int]) -> bool:
             #         break
             #     except ValueError:
             #         print("try again")
-            # [['A', 1, 2, 0], ['D', 3, 2, 2], ['C', 2, 1, 0], ['E', 3, 2, 1], ['B', 2, 1, 2], ['E', 3, 2, 1]]
+            # [['A', 1, 2, 0], ['D', 3, 2, 2], ['C', 2, 1, 0],
+            # ['E', 3, 2, 1], ['B', 2, 1, 2], ['E', 3, 2, 1]]
             # pseudo_player = {"name": name, "day": day, "steps": steps, "total_GP": total_gp}
             # insert_player_data(pseudo_player)
             insert_player_data(player_in=player_in)
