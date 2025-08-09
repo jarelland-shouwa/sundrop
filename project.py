@@ -503,7 +503,7 @@ def draw_view(current_map_in: list[list[str]],
     border_len: int = len(mine_rows[0]) - 3
     view: str= f"+{"-"*border_len}+\n"
     view += "".join(mine_rows)
-    view += f"+{"-"*border_len}+\n"
+    view += f"+{"-"*border_len}+"
     print(view)
 
 
@@ -541,7 +541,8 @@ def save_game(save_slot_number: int, current_map_in: list[list[str]],
         text_to_write = text_to_write[:len(text_to_write)-1] # Removes extra \n
         file.write(text_to_write)
 
-    print(f"Saved to save slot {save_slot_number}")
+    if game_state == "town":
+        print(f"Game saved to save slot {save_slot_number}")
 
 
 # Template ✅✅✅
@@ -633,8 +634,7 @@ def show_information(menu_type: str, player_in: dict[str, str | int]) -> None:
     print(f"Pickaxe level: {player_in['pickaxe_level']} ({minerals[player_in['pickaxe_level']-1]})")
     print(f"Torch level: {player_in["torch_level"]}")
     if menu_type == "mine":
-        minerals.reverse()
-        for mineral in minerals:
+        for mineral in reversed(minerals):
             print(f"{mineral.capitalize()}: {player_in[mineral]}")
 
     print("------------------------------")
@@ -852,6 +852,7 @@ def sell_ores(player_in: dict[str, str | int]) -> bool:
         Specifies whether to return to main menu or not.
     """
 
+    global game_state
     have_sold_stuff: bool = False
 
     # Sell ores
@@ -869,6 +870,7 @@ def sell_ores(player_in: dict[str, str | int]) -> bool:
         print(f"You now have {player_in["GP"]} GP!")
     if player_in["GP"] >= WIN_GP:
         show_game_won(player_in=player_in)
+        game_state = "main"
         save_game(save_slot_number=current_save_slot,
                   current_map_in=current_map, fog_in=fog, player_in=player_in)
         archive_data(player_in=player_in)
@@ -1109,7 +1111,7 @@ def main_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
             if not loaded_success:
                 continue
             game_state = "town"
-            print("Game loaded.")
+            print(f"Game loaded from save slot {current_save_slot}.")
             break
         if main_menu_choice == "q":
             game_state = "exit"
@@ -1150,6 +1152,7 @@ def shop_menu(player_in: dict[str, str | int]) -> None:
             price: int = player_in["torch_level"] * TORCH_UPGRADE_MULTIPLIER
             buy(player_in=player_in, option=shop_menu_choice, price=price)
         else:
+            print("Bye! See you again!")
             break
 
 
@@ -1177,7 +1180,10 @@ def mine_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
     while True:
         show_mine_menu(player_in=player_in, fog_in=fog_in, current_map_in=current_map_in)
         mine_menu_choice: str = validate_input("Action? ", r"^[wasdmipq]$", True)
-        print("\n------------------------------------------------------")
+        if mine_menu_choice not in "pmi": # Minor print adjustments
+            print("")
+        if mine_menu_choice not in "mi":
+            print("------------------------------------------------------")
 
         if mine_menu_choice in "wasd":
             movement_in_mine(mine_menu_choice_input=mine_menu_choice,
@@ -1314,7 +1320,7 @@ def main():
             town_menu(player_in=player, current_map_in=current_map, fog_in=fog)
         else:
             raise ValueError(f"game_state cannot be {game_state}")
-    print("Thanks for playing")
+    print("Thanks for playing!")
 
 
 if __name__=="__main__":

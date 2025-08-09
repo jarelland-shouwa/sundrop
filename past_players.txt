@@ -1,1 +1,2 @@
-Bob, the builder,2,200,684
+Bob, the builder,1,0
+Bob, the builder,1,0,0
