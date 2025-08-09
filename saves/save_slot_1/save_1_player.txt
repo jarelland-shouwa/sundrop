@@ -4,7 +4,7 @@ y,8
 copper,0
 silver,0
 gold,0
-GP,33
+GP,5005
 day,6
 steps,58
 turns,20

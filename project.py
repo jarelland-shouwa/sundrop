@@ -38,7 +38,7 @@ current_prices: dict[str, int] = {}
 current_save_slot: int = 1
 
 game_state: str = "main" # can be "main", "exit", "town", "mine"
-high_score_records: dict = {}
+high_score_records: list = []
 
 SAVE_SLOT_QUANTITY: int = 5
 
@@ -78,6 +78,23 @@ def create_regex(valid_char: str) -> str:
     return rf"^[{valid_char}]$"
 
 
+def name_in_high_score_records(name_in: str) -> bool:
+    """Checks if a name is inside the archives (for high scores).
+
+    Parameters
+    ----------
+    name_in : str
+        name
+
+    Returns
+    -------
+    bool
+        indicates if name is in the archives
+    """
+
+    return name_in in [record["name"] for record in high_score_records]
+
+
 def validate_input(message: str, regex: str, is_single: bool) -> str:
     """Uses a regular expression to validate input
     (best for single char input). is_single specifies if
@@ -99,7 +116,7 @@ def validate_input(message: str, regex: str, is_single: bool) -> str:
         has_invalid_spaces: bool = user_input.startswith(" ") or user_input.endswith(" ")
         has_new_lines: bool = user_input.find("\n") != -1
         has_invalid_whitespaces: bool = has_invalid_spaces or has_new_lines or has_tabs
-        duplicate_name: bool = user_input in high_score_records
+        duplicate_name: bool = name_in_high_score_records(user_input)
 
         if re.match(regex, user_input) and not has_invalid_whitespaces and not duplicate_name:
             return user_input
@@ -653,7 +670,7 @@ def show_main_menu() -> None:
     print("--- Main Menu ----")
     print("(N)ew game")
     print("(L)oad saved game")
-    # print("(H)igh scores") TODO
+    print("(H)igh scores")
     print("(Q)uit")
     print("------------------")
 
@@ -749,26 +766,68 @@ def show_game_won(player_in: dict[str, str | int]) -> None:
     """
 
     print("-------------------------------------------------------------")
-    print(f"Woo-hoo! Well done, Cher, you have {player_in["GP"]} GP!")
+    print(f"Woo-hoo! Well done, {player_in["name"]}, you have {player_in["GP"]} GP!")
     print("You now have enough to retire and play video games every day.")
     print(f"And it only took you {player_in["day"]} day(s) and "
           f"{player_in["steps"]} steps! You win!")
     print("-------------------------------------------------------------")
 
 
+def show_high_scores():
+    # print(f"{"HIGH SCORES":,^-50}")
+    # message = 'Hi'
+    # refer to
+    # https://medium.com/@johnidouglasmarangon/padding-f-strings-in-python-977b17edbd36
+    fill = '-'
+    align = '^'
+    width = 50
+    row_to_print = ""
+    print(f'{"High scores":{fill}{align}{width}}')
+    for record in high_score_records:
+        row_to_print += f"{record["name"]} {record["day"]} {record["steps"]} {record["total_GP"]}\n"
+    print(row_to_print)
+
+
 # ------------------------- Various functions that are used in Menus -------------------------
-def archive_data(player_in) -> None:
+def archive_data() -> None:
     """Saves the data of a player that has won the game to archive file."""
-    # FIXME
+
     with open(ARCHIVE_FILE_NAME, "w", encoding="utf-8") as f:
         text_to_write: str = ""
         for record in high_score_records:
-            text_to_write += f"{record},{high_score_records[record]["day"]},{high_score_records[record]["steps"]},{high_score_records[record]["total_GP"]}\n"
-            # print(record)
-        # print(player_in)
-        text_to_write += f"{player_in["name"]},{player_in["day"]},{player_in["steps"]},{player_in["total_GP"]}\n"
-        # print("Added player")
+            text_to_write += f"{record["day"]},{record["steps"]},{record["total_GP"]},{record["name"]}\n"
+        print(f"What s being saved: {text_to_write}")
         f.write(text_to_write)
+
+
+def insert_player_data(player_in) -> None:
+
+    global high_score_records
+    record_to_add = {"name": player_in["name"], "day": player_in["day"], "steps": player_in["steps"], "total_GP": player_in["total_GP"]}
+    if len(high_score_records) == 0:
+        high_score_records.append(record_to_add)
+    else:
+        max_i = 0
+        for i, record in enumerate(high_score_records):
+            if player_in["day"] == record["day"]:
+                if player_in["steps"] == record["steps"]:
+                    if player_in["total_GP"] > record["total_GP"]: # > FOR ASCENDING ORDER (BOTTOM TO TOP)
+                        max_i = i
+                        break
+                    else:
+                        max_i += 1
+                elif player_in["steps"] < record["steps"]:
+                    max_i = i
+                    break
+                else:
+                    max_i += 1
+            elif player_in["day"] < record["day"]:
+                max_i = i
+                break
+            elif player_in["day"] > record["day"]:
+                max_i += 1
+
+        high_score_records.insert(max_i, record_to_add)
 
 
 def new_day(player_in: dict[str, str | int],
@@ -873,7 +932,23 @@ def sell_ores(player_in: dict[str, str | int]) -> bool:
         game_state = "main"
         save_game(save_slot_number=current_save_slot,
                   current_map_in=current_map, fog_in=fog, player_in=player_in)
-        archive_data(player_in=player_in)
+        # print(f"OLD: {high_score_records}")
+        if not name_in_high_score_records(player_in["name"]):
+            # name = input("name: ")
+            # while True:
+            #     try:
+            #         day = int(input("day:"))
+            #         steps = int(input("steps: "))
+            #         total_gp = int(input("total gp: "))
+            #         break
+            #     except ValueError:
+            #         print("try again")
+            # [['A', 1, 2, 0], ['D', 3, 2, 2], ['C', 2, 1, 0], ['E', 3, 2, 1], ['B', 2, 1, 2], ['E', 3, 2, 1]]
+            # pseudo_player = {"name": name, "day": day, "steps": steps, "total_GP": total_gp}
+            # insert_player_data(pseudo_player)
+            insert_player_data(player_in=player_in)
+        archive_data()
+        # print(f"UPDATED: {high_score_records}")
         return True
     return False
 
@@ -1083,7 +1158,7 @@ def main_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
 
     while True:
         show_main_menu()
-        main_menu_choice: str = validate_input("Your choice? ", r"^[nlq]$", True)
+        main_menu_choice: str = validate_input("Your choice? ", r"^[nlhq]$", True)
 
         if main_menu_choice == "n":
             initialize_game(current_map_in=current_map_in, fog_in=fog_in,
@@ -1113,6 +1188,9 @@ def main_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
             game_state = "town"
             print(f"Game loaded from save slot {current_save_slot}.")
             break
+        if main_menu_choice == "h":
+            # print("High scores are still being implemented!")
+            show_high_scores()
         if main_menu_choice == "q":
             game_state = "exit"
             break
@@ -1267,18 +1345,20 @@ def create_save_folders() -> None:
             assert False, f"An error occurred while attempting creating {full_dir_path}: {exp}"
 
 
-def load_high_scores() -> None: # FIXME
-    """Reads the past players nfo who have have
+def load_high_scores() -> None:
+    """Reads the past players info who have
     won (to be used to show high scores)"""
 
+    high_score_records.clear()
     with open(ARCHIVE_FILE_NAME, "r", encoding="utf-8") as f:
         info: str = f.read().strip()
     if info != "":
         data = info.split("\n")
         for i in range(len(data)):
-            data[i] = data[i].split(",")
-            high_score_records[data[i][0]] = {"day": data[i][1], "steps": data[i][2], "total_GP": data[i][3]}
-    # print(high_score_records)
+            data[i] = data[i].split(",", 3)
+            # print(data[i])
+            high_score_records.append({"name": data[i][3], "day": int(data[i][0]), "steps": int(data[i][1]), "total_GP": int(data[i][2])})
+    # print(f"What was loaded: {high_score_records}")
 
 
 #--------------------------- MAIN GAME ---------------------------
@@ -1300,6 +1380,7 @@ def main():
 
     create_save_folders()
     load_map(filename=LEVEL_MAP, map_struct=level_map)
+    load_high_scores()
 
     # game_state: str = 'main'
     print("---------------- Welcome to Sundrop Caves! ----------------")
@@ -1311,7 +1392,7 @@ def main():
     print("-----------------------------------------------------------")
 
     while True: # MAIN LOOP
-        load_high_scores()
+        # load_high_scores()
         main_menu(current_map_in=current_map, fog_in=fog, player_in=player)
 
         if game_state == "exit":
