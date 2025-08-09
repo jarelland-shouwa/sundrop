@@ -61,6 +61,7 @@ TOWN_POSITION: tuple[int, int] = (0, 0)
 FOG_CHAR = "?"
 NON_FOG_CHAR = " "
 PLAYER_CHAR = "M"
+WALL_CHAR = "#"
 
 TORCH_LEVEL_LIMIT: int = 3
 BACKPACK_UPGRADE_CONSTANT: int = 2 # Used to find 1. cost of backpack upgrade
@@ -77,16 +78,18 @@ DAY_WIDTH: int = 5
 STEP_WIDTH: int = 6
 TOTAL_GP_WIDTH: int = 17
 
-
-COLOUR_CODES = {"red": 91, "green": 92, "yellow ":93,
+COLOUR_CODES: dict[int] = {"red": 91, "green": 92, "yellow":93,
              "lightpurple": 94, "purple": 95,
              "cyan": 96, "lightgrey": 97, "black": 90}
+
+ORE_COLOUR: dict[str] = {"copper": "red", "silver": "lightgrey", "gold": "yellow"}
 
 # ------------------------- GENERAL Functions -------------------------
 
 
 def colourirse_str(text: str, colour: str) -> str:
-    """_summary_
+    """Uses ANSI escape codes to render text with colour
+    in terminal.
 
     Parameters
     ----------
@@ -108,7 +111,29 @@ def colourirse_str(text: str, colour: str) -> str:
 
     if colour.lower() not in COLOUR_CODES:
         raise ValueError(f"{colour} for colour is invalid.")
-    return f"\033[{COLOUR_CODES[colour.lower()]}m {text}\033[00m"
+    return f"\033[{COLOUR_CODES[colour.lower()]}m{text}\033[00m"
+
+
+def colour_ore(text: str) -> str:
+    """Outputs ore text rendered in its corresponding colour
+
+    Parameters
+    ----------
+    text : str
+        string that could be of the full name or the first character
+        of ore
+
+    Returns
+    -------
+    str
+        ore text rendered with colour
+    """
+
+    if text in mineral_names:
+        return colourirse_str(text, ORE_COLOUR[mineral_names[text]])
+    if text in minerals:
+        return colourirse_str(text, ORE_COLOUR[text])
+    return text
 
 
 def create_regex(valid_char: str) -> str:
@@ -500,11 +525,11 @@ def draw_map(fog_in: list[list[str]],
             if add_player:
                 row_text += PLAYER_CHAR
             elif add_portal:
-                row_text += "P"
+                row_text += colourirse_str("P", "lightpurple")
             elif fog_in[i][j] == NON_FOG_CHAR:
-                row_text += current_map_in[i][j]
+                row_text += colour_ore(current_map_in[i][j])
             else:
-                row_text += FOG_CHAR
+                row_text += colourirse_str(FOG_CHAR, "black")
 
         output_text += f"|{row_text}|\n"
     output_text += f"+{"-"*MAP_WIDTH}+"
@@ -551,10 +576,10 @@ def draw_view(current_map_in: list[list[str]],
             if is_within(height=MAP_HEIGHT, width=MAP_WIDTH, x=col_n, y=row_n):
                 not_fog: bool = fog_in[row_n][col_n] == NON_FOG_CHAR
                 if not_fog:
-                    mine_row += current_map_in[row_n][col_n]
+                    mine_row += colour_ore(current_map_in[row_n][col_n])
             elif is_within(height=MAP_HEIGHT+1, width=MAP_WIDTH+1,
-                        x=col_n, y=row_n, lower_limit=-1):# Draws walls
-                mine_row += "#"
+                        x=col_n, y=row_n, lower_limit=-1): # Draws walls
+                mine_row += WALL_CHAR
             else: # Uncomment this for a fixed area
                 mine_row += " "
         if mine_row != "":
@@ -562,7 +587,8 @@ def draw_view(current_map_in: list[list[str]],
 
     mine_rows = [f"|{row}|\n" for row in mine_rows]
 
-    border_len: int = len(mine_rows[0]) - 3
+    # border_len: int = len(mine_rows[0]) - 3 # For an unfixed area
+    border_len: int = player_in["torch_level"] * 2 + 1
     view: str= f"+{"-"*border_len}+\n"
     view += "".join(mine_rows)
     view += f"+{"-"*border_len}+"
@@ -693,7 +719,8 @@ def show_information(menu_type: str, player_in: dict[str, str | int]) -> None:
     else:
         print(f"Current position: {(player_in["x"], player_in["y"])}")
 
-    print(f"Pickaxe level: {player_in['pickaxe_level']} ({minerals[player_in['pickaxe_level']-1]})")
+    print(f"Pickaxe level: {player_in['pickaxe_level']} "
+          f"({colour_ore(minerals[player_in['pickaxe_level']-1])})")
     print(f"Torch level: {player_in["torch_level"]}")
     if menu_type == "mine":
         for mineral in reversed(minerals):
@@ -702,7 +729,7 @@ def show_information(menu_type: str, player_in: dict[str, str | int]) -> None:
     print("------------------------------")
     print(f"Load: {sum_ores_in_backpack(player_in=player_in)} / {player_in["capacity"]}")
     print("------------------------------")
-    print(f"GP: {player_in["GP"]}")
+    print(f"GP: {colourirse_str(player_in["GP"], "cyan")}")
     print(f"Steps taken: {player_in["steps"]}")
     print("------------------------------")
 
@@ -761,18 +788,18 @@ def show_shop_menu(show_pickaxes: bool,
     if show_pickaxes:
         pickaxe_price: int = pickaxe_prices[player_in["pickaxe_level"]-1]
         print(f"(P)ickaxe upgrade to Level {player_in['pickaxe_level']+1} "
-              f"to mine {minerals[player_in['pickaxe_level']]} ore for {pickaxe_price} GP")
+              f"to mine {colour_ore(minerals[player_in['pickaxe_level']])} ore for {colourirse_str(pickaxe_price, "cyan")} GP")
 
     if show_torch:
         torch_price: int = player_in["torch_level"] * TORCH_UPGRADE_MULTIPLIER
-        print(f"(T)orch upgrade to Level {player_in['torch_level']+1} for {torch_price} GP")
+        print(f"(T)orch upgrade to Level {player_in['torch_level']+1} for {colourirse_str(torch_price, "cyan")} GP")
 
     backpack_upgrade_price: int = player_in["capacity"] * BACKPACK_UPGRADE_CONSTANT
     print(f"(B)ackpack upgrade to carry {player_in["capacity"]+BACKPACK_UPGRADE_CONSTANT} items "
-          f"for {backpack_upgrade_price} GP")
+          f"for {colourirse_str(backpack_upgrade_price, "cyan")} GP")
     print("(L)eave shop")
     print("-----------------------------------------------------------")
-    print(f"GP: {player_in["GP"]}")
+    print(f"GP: {colourirse_str(player_in["GP"], "cyan")}")
     print("-----------------------------------------------------------")
 
 
@@ -811,7 +838,8 @@ def show_game_won(player_in: dict[str, str | int]) -> None:
     """
 
     print("-------------------------------------------------------------")
-    print(f"Woo-hoo! Well done, {player_in["name"]}, you have {player_in["GP"]} GP!")
+    print(f"Woo-hoo! Well done, {player_in["name"]}, you have "
+          f"{colourirse_str(player_in["GP"], "cyan")} GP!")
     print("You now have enough to retire and play video games every day.")
     print(f"And it only took you {player_in["day"]} day(s) and "
           f"{player_in["steps"]} steps! You win!")
@@ -970,7 +998,7 @@ def buy(player_in: dict[str, str | int], option: str, price: int) -> None:
         player_in["valid_minable_ores"] += minerals[player_in['pickaxe_level']][0].upper()
         player_in["pickaxe_level"] += 1
         print("Congratulations! "
-                f"You can now mine {minerals[player_in['pickaxe_level']-1]}!")
+                f"You can now mine {colour_ore(minerals[player_in['pickaxe_level']-1])}!")
     elif option == "b":
         player_in["capacity"] += BACKPACK_UPGRADE_CONSTANT
         print(f"Congratulations! You can now carry {player_in["capacity"]} items!")
@@ -1002,21 +1030,23 @@ def sell_ores(player_in: dict[str, str | int]) -> bool:
         if player_in[mineral] > 0:
             # print(current_prices)
             gp_sold: int = player_in[mineral] * current_prices[mineral]
-            print(f"You sell {player_in[mineral]} {mineral} ore for {gp_sold} GP.")
+            print((f"You sell {player_in[mineral]} {colour_ore(mineral)} "
+                   f"ore for {colourirse_str(gp_sold, "cyan")} GP."))
             player_in["GP"] += gp_sold
             player_in["total_GP"] += gp_sold
             player_in[mineral] = 0
             have_sold_stuff = True
 
     if have_sold_stuff:
-        print(f"You now have {player_in["GP"]} GP!")
+        print(f"You now have {colourirse_str(player_in["GP"], "cyan")} GP!")
     if player_in["GP"] >= WIN_GP:
         show_game_won(player_in=player_in)
         game_state = "main"
         save_game(save_slot_number=current_save_slot,
                   current_map_in=current_map, fog_in=fog, player_in=player_in)
-        # print(f"OLD: {high_score_records}")
+
         if not name_in_high_score_records(player_in["name"]):
+            # FOR TESTING
             # name = input("name: ")
             # while True:
             #     try:
@@ -1032,7 +1062,6 @@ def sell_ores(player_in: dict[str, str | int]) -> bool:
             # insert_player_data(pseudo_player)
             insert_player_data(player_in=player_in)
         archive_data()
-        # print(f"UPDATED: {high_score_records}")
         return True
     return False
 
@@ -1470,7 +1499,7 @@ def main():
     print("You spent all your money to get the deed to a mine, a small")
     print("  backpack, a simple pickaxe and a magical portal stone.")
     print()
-    print(f"How quickly can you get the {WIN_GP} GP you need to retire")
+    print(f"How quickly can you get the {colourirse_str(WIN_GP, "cyan")} GP you need to retire")
     print("  and live happily ever after?")
     print("-----------------------------------------------------------")
 
