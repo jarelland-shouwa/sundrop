@@ -18,7 +18,9 @@ existing written save slots
 - Ore regeneration when a day passes, with a fixed chance per ore
 - Torch upgrade from level 1 to 3, expanding your viewport
 area of fog of war cleared.
-- Code follows PEP8 Style Guide
+- Code follows PEP8 Style Guide, formatted
+using *autopep8* extension by Microsoft on VSC
+(https://marketplace.visualstudio.com/items?itemName=ms-python.autopep8)
 
 NOTE
 dir is sometimes used as an abbreviation for *directory*
@@ -208,8 +210,7 @@ def validate_input(message: str, regex: str, is_single: bool) -> str:
             return user_input.lower()
 
         has_tabs: bool = user_input.find("\t") != -1
-        has_invalid_spaces: bool = user_input.startswith(
-            " ") or user_input.endswith(" ")
+        has_invalid_spaces: bool = user_input.startswith(" ") or user_input.endswith(" ")
         has_new_lines: bool = user_input.find("\n") != -1
         has_invalid_whitespaces: bool = has_invalid_spaces or has_new_lines or has_tabs
         duplicate_name: bool = (name_in_high_score_records(user_input)
@@ -223,8 +224,7 @@ def validate_input(message: str, regex: str, is_single: bool) -> str:
         if user_input == "":
             print("Please enter a valid input instead of nothing.")
         elif has_invalid_whitespaces:
-            print(
-                "Please enter a valid input that doesn't contain unnecessary/invalid whitespace.")
+            print("Please enter a valid input that doesn't contain unnecessary/invalid whitespace.")
         elif not (is_valid_name or is_single):  # Disallowing duplicate names
             print("That name has already been taken. Please enter another name.")
         else:
@@ -292,8 +292,7 @@ def sq_increment_range(torch_level_in: int) -> range:
     """
 
     if not (isinstance(torch_level_in, int) and 1 <= torch_level_in <= TORCH_LEVEL_LIMIT):
-        raise ValueError(
-            "torch_level_in must be an int x, 1 <= x <= TORCH_LEVEL_LIMIT")
+        raise ValueError("torch_level_in must be an int x, 1 <= x <= TORCH_LEVEL_LIMIT")
     return range(0-torch_level_in, 1+torch_level_in)
 
 
@@ -332,8 +331,7 @@ def get_pos_in_square(x: int, y: int,
 def get_full_directory(slot_number: int, data_name: str) -> str:
     '''Returns the full directory path for a txt file to be saved in a save slot.'''
     directory_name: str = get_save_slot_dir(number=slot_number)
-    file_name: str = get_file_name(
-        slot_number=slot_number, data_name=data_name)
+    file_name: str = get_file_name(slot_number=slot_number, data_name=data_name)
     return f"{directory_name}/{file_name}"
 
 
@@ -361,8 +359,7 @@ def find_written_slots(mode: str) -> list[int]:
 
     # Ensures value of mode is correct
     if mode not in ["save", "load"]:
-        raise ValueError(
-            f"{mode} is invalid. Valid: {["save", "load"]}. Please check again.")
+        raise ValueError(f"{mode} is invalid. Valid: {["save", "load"]}. Please check again.")
 
     # Configuring how the print output will be for save and load
     save_slot_listing_text: str = ""
@@ -382,8 +379,7 @@ def find_written_slots(mode: str) -> list[int]:
                            f"Please check that this folder has "
                            f"been created.")
         else:
-            files_needed: set = {get_file_name(
-                i, name) for name in FILES_TO_SAVE}
+            files_needed: set = {get_file_name(i, name) for name in FILES_TO_SAVE}
 
             # Check number and names of files are correct
             if files_needed.issubset(set(files_in_dir)):
@@ -421,21 +417,18 @@ def choose_new_save_slot() -> int:
     written_slots: list[int] = find_written_slots(mode="save")
 
     # Creating regex for input validation based on number of save slots.
-    regex: str = "".join([str(i)
-                         for i in list(range(1, SAVE_SLOT_QUANTITY+1))])
+    regex: str = "".join([str(i) for i in list(range(1, SAVE_SLOT_QUANTITY+1))])
     regex = create_regex(valid_char=regex)
 
     # Asking user for desired save slot choice
     while True:
-        save_slot_choice: int = int(
-            validate_input("Your choice? ", regex, True))
+        save_slot_choice: int = int(validate_input("Your choice? ", regex, True))
         if save_slot_choice in written_slots:  # When attempting to overwrite
             confirmation_choice: str = validate_input(f"Are you sure? This will overwrite save "
                                                       f"slot {save_slot_choice}. "
                                                       "Your choice (y/n)? ", r"^[yn]$", True)
             if confirmation_choice == "n":
-                print(
-                    f"You chose not to overwrite save slot {save_slot_choice}")
+                print(f"You chose not to overwrite save slot {save_slot_choice}")
                 continue
         break
 
@@ -515,8 +508,7 @@ def initialize_game(current_map_in: list[list[str]],
         existing_player_names.pop(current_save_slot)
     except KeyError:
         pass
-    name: str = validate_input(
-        "Greetings, miner! What is your name? ", r"^[^\n\t]+$", False)
+    name: str = validate_input("Greetings, miner! What is your name? ", r"^[^\n\t]+$", False)
     existing_player_names[current_save_slot] = name
 
     # initialise current map
@@ -586,8 +578,7 @@ def draw_map(fog_in: list[list[str]],
             else:  # Player not in town
                 add_player = (i, j) == (player_in["y"], player_in["x"])
 
-            add_portal: bool = (
-                i, j) == player_position and used_portal_to_town
+            add_portal: bool = (i, j) == player_position and used_portal_to_town
 
             if add_player:
                 row_text += PLAYER_CHAR
@@ -635,8 +626,7 @@ def draw_view(current_map_in: list[list[str]],
         for j in sq_range:
             col_n: int = x + j
 
-            is_at_player_position: bool = are_equal(
-                y1=y, y2=row_n, x1=x, x2=col_n)
+            is_at_player_position: bool = are_equal(y1=y, y2=row_n, x1=x, x2=col_n)
             if is_at_player_position:  # Draws player
                 mine_row += PLAYER_CHAR
                 continue
@@ -694,8 +684,7 @@ def save_game(save_slot_number: int, current_map_in: list[list[str]],
         text_to_write: str = ""
         for key, value in player_in.items():
             text_to_write += f"{key},{value}\n"
-        text_to_write = text_to_write[:len(
-            text_to_write)-1]  # Removes extra \n
+        text_to_write = text_to_write[:len(text_to_write)-1]  # Removes extra \n
         file.write(text_to_write)
 
     if game_state == "town":
@@ -798,8 +787,7 @@ def show_information(menu_type: str, player_in: dict[str, str | int]) -> None:
             print(f"{colour_ore(mineral.capitalize())}: {player_in[mineral]}")
 
     print("------------------------------")
-    print(
-        f"Load: {sum_ores_in_backpack(player_in=player_in)} / {player_in["capacity"]}")
+    print(f"Load: {sum_ores_in_backpack(player_in=player_in)} / {player_in["capacity"]}")
     print("------------------------------")
     print(f"GP: {colourirse_str(player_in["GP"], "cyan")}")
     print(f"Steps taken: {player_in["steps"]}")
@@ -869,8 +857,7 @@ def show_shop_menu(show_pickaxes: bool,
         print(f"(T)orch upgrade to Level {colourirse_str(player_in['torch_level']+1, "purple")} "
               f"for {colourirse_str(torch_price, "cyan")} GP")
 
-    backpack_upgrade_price: int = player_in["capacity"] * \
-        BACKPACK_UPGRADE_CONSTANT
+    backpack_upgrade_price: int = player_in["capacity"] * BACKPACK_UPGRADE_CONSTANT
     print(f"(B)ackpack upgrade to carry "
           f"{colourirse_str(player_in["capacity"] + BACKPACK_UPGRADE_CONSTANT, "purple")} items "
           f"for {colourirse_str(backpack_upgrade_price, "cyan")} GP")
@@ -894,8 +881,7 @@ def show_mine_menu(player_in: dict[str, str | int],
         input for GLOBAL game map (originally named game_map)
     """
 
-    draw_view(current_map_in=current_map_in,
-              player_in=player_in, fog_in=fog_in)
+    draw_view(current_map_in=current_map_in, player_in=player_in, fog_in=fog_in)
     print(f"Turns left: {player_in['turns']}{" "*4}Load: "
           f"{sum_ores_in_backpack(player_in=player_in)} / {player_in["capacity"]}"
           f"{" "*4}Steps: {player_in['steps']}")
@@ -1063,8 +1049,7 @@ def set_prices() -> None:
 
     current_prices.clear()
     for mineral in minerals:
-        current_prices[mineral] = randint(
-            prices[mineral][0], prices[mineral][1])
+        current_prices[mineral] = randint(prices[mineral][0], prices[mineral][1])
 
 
 def buy(player_in: dict[str, str | int], option: str, price: int) -> None:
@@ -1212,18 +1197,15 @@ def valid_move_checker(direction: str, move_value: int,
 
     # Input checks
     if direction not in ["x", "y"]:
-        raise ValueError(
-            f"{direction} is an invalid value for direction; must be 'x' or 'y'")
+        raise ValueError(f"{direction} is an invalid value for direction; must be 'x' or 'y'")
     if move_value not in [1, -1]:
-        raise ValueError(
-            f"{move_value} is an invalid value for move_value; must be 1 or -1")
+        raise ValueError(f"{move_value} is an invalid value for move_value; must be 1 or -1")
 
     player_in["turns"] -= 1
     player_in["steps"] += 1
 
     # Determines new hypothetical position and square
-    position_to_check: dict[str, int] = {
-        "x": player_in["x"], "y": player_in["y"]}
+    position_to_check: dict[str, int] = {"x": player_in["x"], "y": player_in["y"]}
     position_to_check[direction] += move_value
 
     # Checks if hypothetical position is within map boundaries
@@ -1233,12 +1215,10 @@ def valid_move_checker(direction: str, move_value: int,
         return False
 
     # Determines new hypothetical square
-    square_to_check: str = current_map_in[position_to_check["y"]
-                                          ][position_to_check["x"]]
+    square_to_check: str = current_map_in[position_to_check["y"]][position_to_check["x"]]
 
     # Checks if player's backpack is full and if the square to be stepped on is a mineral
-    is_backpack_full: bool = sum_ores_in_backpack(
-        player_in=player_in) == player_in["capacity"]
+    is_backpack_full: bool = sum_ores_in_backpack(player_in=player_in) == player_in["capacity"]
     is_next_square_a_mineral: bool = square_to_check in mineral_names
 
     # Checks if ore can be mined, given the square is an ore
@@ -1265,18 +1245,14 @@ def process_ore_into_backpack(ore_found_input: str, player_in: dict[str, str | i
     remaining_space_in_backpack: int = (player_in["capacity"]
                                         - sum_ores_in_backpack(player_in=player_in))
     mineral_name: str = mineral_names[ore_found_input]
-    pieces_found: int = randint(
-        pieces_per_node[mineral_name][0], pieces_per_node[mineral_name][1])
+    pieces_found: int = randint(pieces_per_node[mineral_name][0], pieces_per_node[mineral_name][1])
 
     if pieces_found <= remaining_space_in_backpack:
-        print(
-            f"You mined {pieces_found} piece(s) of {colour_ore(mineral_name)}.")
+        print(f"You mined {pieces_found} piece(s) of {colour_ore(mineral_name)}.")
         player_in[mineral_name] += pieces_found
     else:
-        print(
-            f"You mined {pieces_found} piece(s) of {colour_ore(mineral_name)}.")
-        print(
-            f"...but you can only carry {remaining_space_in_backpack} more piece(s)!")
+        print(f"You mined {pieces_found} piece(s) of {colour_ore(mineral_name)}.")
+        print(f"...but you can only carry {remaining_space_in_backpack} more piece(s)!")
         player_in[mineral_name] += remaining_space_in_backpack
 
 
@@ -1316,8 +1292,7 @@ def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int
         square_stepped: str = current_map_in[player_in["y"]][player_in["x"]]
 
         if square_stepped in mineral_names:  # if an ore was stepped on
-            process_ore_into_backpack(
-                ore_found_input=square_stepped, player_in=player_in)
+            process_ore_into_backpack(ore_found_input=square_stepped, player_in=player_in)
             # Remove ore vein
             current_map_in[player_in["y"]][player_in["x"]] = " "
         elif square_stepped == TOWN_CHAR:  # if town is entered via movement
@@ -1375,8 +1350,7 @@ def main_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
 
     while True:
         show_main_menu()
-        main_menu_choice: str = validate_input(
-            "Your choice? ", r"^[nlhq]$", True)
+        main_menu_choice: str = validate_input("Your choice? ", r"^[nlhq]$", True)
 
         if main_menu_choice == "n":  # Start new game
             initialize_game(current_map_in=current_map_in, fog_in=fog_in,
@@ -1391,15 +1365,13 @@ def main_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
             save_slots_written_already: list[str] = [str(n) for n in
                                                      find_written_slots(mode="load")]
             if len(save_slots_written_already) == 0:
-                print(
-                    "There has not been a save slot written to. Please create a new save slot.")
+                print("There has not been a save slot written to. Please create a new save slot.")
                 continue
 
             regex = "".join(save_slots_written_already)
             regex = create_regex(valid_char=regex)
 
-            current_save_slot = int(
-                validate_input("Your choice? ", regex, True))
+            current_save_slot = int(validate_input("Your choice? ", regex, True))
             loaded_success: bool = load_game(save_slot_number=current_save_slot,
                                              current_map_in=current_map_in,
                                              fog_in=fog_in, player_in=player_in)
@@ -1437,10 +1409,8 @@ def shop_menu(player_in: dict[str, str | int]) -> None:
             options += "t"
             show_torch = True
 
-        show_shop_menu(show_pickaxes=show_pickaxes,
-                       show_torch=show_torch, player_in=player_in)
-        shop_menu_choice: str = validate_input(
-            "Your choice? ", create_regex(options), True)
+        show_shop_menu(show_pickaxes=show_pickaxes, show_torch=show_torch, player_in=player_in)
+        shop_menu_choice: str = validate_input("Your choice? ", create_regex(options), True)
 
         if shop_menu_choice == "p":  # upgrade pickaxe
             price: int = pickaxe_prices[player_in["pickaxe_level"]-1]
@@ -1478,10 +1448,8 @@ def mine_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
     print("---------------------------------------------------")
 
     while True:
-        show_mine_menu(player_in=player_in, fog_in=fog_in,
-                       current_map_in=current_map_in)
-        mine_menu_choice: str = validate_input(
-            "Action? ", r"^[wasdmipq]$", True)
+        show_mine_menu(player_in=player_in, fog_in=fog_in, current_map_in=current_map_in)
+        mine_menu_choice: str = validate_input("Action? ", r"^[wasdmipq]$", True)
 
         # Print statement adjustments
         if mine_menu_choice not in "pmi":  # Minor print adjustments
@@ -1496,8 +1464,7 @@ def mine_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
                 new_day(player_in=player_in, current_map_in=current_map_in)
                 break
         elif mine_menu_choice == "m":  # Display map
-            draw_map(fog_in=fog_in, player_in=player_in,
-                     current_map_in=current_map_in)
+            draw_map(fog_in=fog_in, player_in=player_in, current_map_in=current_map_in)
         elif mine_menu_choice == "i":  # Display player info
             show_information(menu_type="mine", player_in=player_in)
         elif mine_menu_choice == "p":  # Place portal
@@ -1534,8 +1501,7 @@ def town_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
             break
 
         show_town_menu(player_in=player_in)
-        town_menu_choice: str = validate_input(
-            "Your choice? ", r"^[bimevq]$", True)
+        town_menu_choice: str = validate_input("Your choice? ", r"^[bimevq]$", True)
 
         if town_menu_choice == "b":  # Shop
             shop_menu(player_in=player_in)
@@ -1637,8 +1603,7 @@ def main() -> None:
     print("You spent all your money to get the deed to a mine, a small")
     print("  backpack, a simple pickaxe and a magical portal stone.")
     print()
-    print(
-        f"How quickly can you get the {colourirse_str(WIN_GP, "cyan")} GP you need to retire")
+    print(f"How quickly can you get the {colourirse_str(WIN_GP, "cyan")} GP you need to retire")
     print("  and live happily ever after?")
     print("-----------------------------------------------------------")
 
@@ -1650,8 +1615,7 @@ def main() -> None:
         if game_state == "town":
             town_menu(player_in=player, current_map_in=current_map, fog_in=fog)
         else:
-            raise ValueError(
-                f"game_state cannot be {game_state} in this stage.")
+            raise ValueError(f"game_state cannot be {game_state} in this stage.")
     print("Thanks for playing!")
 
 
