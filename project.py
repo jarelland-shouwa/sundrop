@@ -1,5 +1,25 @@
 '''
-# TODO The program should have sufficient comments,
+# TODO
+Name: 
+Class:
+Date: 10 August 2025
+
+This program runs the Sundrop Cave Game.
+You are able to explore a mine, mine ores, sell them for
+GP, and upgrade your pickaxe and backpack. Reach the
+required number of GP to win the game.
+
+Bonus features:
+- Git Version and Control
+- Automated testing with Pytest
+- Output text rendered in colour
+- Multiple save slots, with ability to override
+existing written save slots
+- Ore regeneration when a day passes, with a fixed chance per ore
+- Torch upgrade from level 1 to 3, expanding your viewport
+area of fog of war cleared.
+
+The program should have sufficient comments,
 # which includes your name, class, date, overall
 # description of what the program does, as well
 # as the description of the functions.
@@ -43,7 +63,7 @@ existing_player_names: dict[int, str] = {}
 
 SAVE_SLOT_QUANTITY: int = 5
 
-WASD_TO_DIRECTION_AND_MOVE_VALUE: dict[str, dict[str, str | int]]= {
+WASD_TO_DIRECTION_AND_MOVE_VALUE: dict[str, dict[str, str | int]] = {
     "w": {"direction": "y", "move_value": -1},
     "a": {"direction": "x", "move_value": -1},
     "s": {"direction": "y", "move_value": 1},
@@ -339,7 +359,7 @@ def find_written_slots(mode: str) -> list[int]:
         else:
             files_needed: set = {get_file_name(i, name) for name in FILES_TO_SAVE}
 
-            if files_needed.issubset(set(files_in_dir)):
+            if files_needed.issubset(set(files_in_dir)): # Correct files
                 written_slots.append(i)
                 save_slot_listing_text += colourirse_str(f"Slot {i}: HAS BEEN WRITTEN TO; "
                                                          f"Player: {existing_player_names[i]}\n"
@@ -348,7 +368,7 @@ def find_written_slots(mode: str) -> list[int]:
                 save_slot_listing_text += colourirse_str((f"Slot {i}: Incorrect number of"
                                                           f" files present. Check files again.\n"),
                                                           empty_colour)
-            elif len(files_in_dir) == len(FILES_TO_SAVE) and mode == "load":
+            elif len(files_in_dir) == len(FILES_TO_SAVE) and mode == "load": # File typo warning
                 save_slot_listing_text += colourirse_str((f"Slot {i}: Check files again. "
                                                           f"Could be filename or "
                                                           f"type of file issue.\n"), empty_colour)
@@ -489,8 +509,6 @@ def initialize_game(current_map_in: list[list[str]],
     player_in['day'] = 1 # changed from 0
     player_in['steps'] = 0
     player_in['turns'] = TURNS_PER_DAY
-
-    # NEW BELOW
     player_in['capacity'] = 10
     player_in["pickaxe_level"] = 1
     player_in["valid_minable_ores"] = "C"
@@ -1456,7 +1474,6 @@ def town_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
 #--------------------------- Miscellaneous ---------------------------
 def create_save_folders() -> None:
     """Creates save slot folders. Ensures they exist in working directory.
-    Source: https://www.geeksforgeeks.org/python/create-a-directory-in-python/
     """
 
     for i in range(1, SAVE_SLOT_QUANTITY+1):
