@@ -13,6 +13,7 @@ required number of GP to win the game.
 
 Bonus features:
 - Git Version and Control
+Github Repo: https://github.com/jarelland-shouwa/sundrop
 - Automated testing with Pytest
 - Output text rendered in colour
 - Multiple save slots, with ability to override
