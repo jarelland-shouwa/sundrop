@@ -2,7 +2,8 @@
 # TODO
 Name: 
 Class:
-Date: 10 August 2025
+Start date: 21 July 2025
+End date: 10 August 2025
 
 This program runs the Sundrop Cave Game.
 You are able to explore a mine, mine ores, sell them for
@@ -18,11 +19,6 @@ existing written save slots
 - Ore regeneration when a day passes, with a fixed chance per ore
 - Torch upgrade from level 1 to 3, expanding your viewport
 area of fog of war cleared.
-
-The program should have sufficient comments,
-# which includes your name, class, date, overall
-# description of what the program does, as well
-# as the description of the functions.
 '''
 
 from random import randint, random
@@ -276,13 +272,13 @@ def sq_increment_range(torch_level_in: int) -> range:
     return range(0-torch_level_in, 1+torch_level_in)
 
 
-# ✅✅✅
+
 def get_pos_in_square(x: int, y: int,
                                   list_height: int,
                                   list_width: int,
                                   torch_level: int) -> list[dict[str, int]]:
-    """Returns positions that are within a square of side 3
-    as (x,y) the centre.
+    """Returns valid positions that are within a square of side 3
+    as (x,y) the centre inside a 2D list.
     I.e. positions that are within a Manhattan Distance of 2 units.
     [adjusted by torch_level]
 
@@ -432,7 +428,7 @@ def load_map(filename: str, map_struct: list) -> None:
         MAP_HEIGHT = len(map_struct)
 
 
-# Template ✅✅✅
+# Template
 def clear_fog(fog_in: list[list[str]], player_in: dict[str, str | int]) -> None:
     """This function clears the fog of war at the 3x3
     square around the player. (adjusted by torch level)
@@ -457,7 +453,7 @@ def clear_fog(fog_in: list[list[str]], player_in: dict[str, str | int]) -> None:
         fog_in[y][x] = NON_FOG_CHAR
 
 
-# Template ✅✅✅
+# Template
 def initialize_game(current_map_in: list[list[str]],
                     fog_in: list[list[str]], player_in: dict[str, str | int]) -> None:
     """Initiliases current_map, fog and player information.
@@ -521,7 +517,7 @@ def initialize_game(current_map_in: list[list[str]],
     print(f"Pleased to meet you, {name}. Welcome to Sundrop Town!")
 
 
-# Template ✅✅✅
+# Template
 def draw_map(fog_in: list[list[str]],
              player_in: dict[str, str | int], current_map_in: list[list[str]]) -> None:
     """This function draws the entire map, covered by the fog if applicable.
@@ -568,7 +564,7 @@ def draw_map(fog_in: list[list[str]],
     print(output_text)
 
 
-# Template ✅✅✅
+# Template
 def draw_view(current_map_in: list[list[str]],
               player_in: dict[str, str | int], fog_in: list[list[str]]) -> None:
     """This function draws the 3x3 viewport. (adjusted by torch level)
@@ -664,7 +660,7 @@ def save_game(save_slot_number: int, current_map_in: list[list[str]],
         print(f"Game saved to save slot {save_slot_number}")
 
 
-# Template ✅✅✅
+# Template
 def load_game(save_slot_number: int, current_map_in: list[list[str]],
               fog_in: list[list[str]], player_in: dict[str, str | int]) -> bool:
     """This function loads the game.
@@ -1120,7 +1116,7 @@ def is_ore_minable(ore_found_input: str, player_in: dict[str, str | int]) -> boo
         f"too low, so you cannot mine {colour_ore(mineral_names[ore_found_input])}.")
     return False
 
-# ✅✅✅ (SHOULD BE DONE)
+
 def valid_move_checker(direction: str, move_value: int,
                        player_in: dict[str, str | int],
                        current_map_in: list[list[str]]) -> bool:
@@ -1210,7 +1206,7 @@ def process_ore_into_backpack(ore_found_input: str, player_in: dict[str, str | i
         print(f"...but you can only carry {remaining_space_in_backpack} more piece(s)!")
         player_in[mineral_names[ore_found_input]] += remaining_space_in_backpack
 
-# ✅✅✅
+
 def movement_in_mine(mine_menu_choice_input: str, player_in: dict[str, str | int],
                      current_map_in: list[list[str]],
                      fog_in: list[list[str]]) -> None:
@@ -1525,7 +1521,7 @@ def load_names_from_save_slots() -> None:
 
 #--------------------------- MAIN GAME ---------------------------
 def main() -> None:
-    """Main game
+    """Where the game starts
 
     Raises
     ------

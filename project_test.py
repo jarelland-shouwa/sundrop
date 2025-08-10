@@ -8,7 +8,6 @@ from project import (
     get_full_directory,
     get_file_name,
     get_save_slot_dir,
-    colourirse_str
 )
 
 
@@ -36,13 +35,15 @@ def test_sq_increment_range():
 
 
 def test_get_pos_in_square():
-    test_cases = {
-        1: {"x": 0, "y": 0, "list_height": 20, "list_width": 10,
-            "torch_level": 1, "expected": "TO BE DONE"}}
+    test_cases = {1: {"x": 0, "y": 0, "list_height": 20, "list_width": 10,
+            "torch_level": 1, "expected": [{'x': 0, 'y': 0},
+                                           {'x': 1, 'y': 0},
+                                           {'x': 0, 'y': 1},
+                                           {'x': 1, 'y': 1}]}}
 
     for case in test_cases.values():
         assert get_pos_in_square(case["x"], case["y"],
-                                 case["list_height"], case["width"],
+                                 case["list_height"], case["list_width"],
                                  case["torch_level"]) == case["expected"]
 
 
