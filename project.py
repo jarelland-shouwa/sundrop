@@ -75,6 +75,7 @@ WASD_TO_DIRECTION_AND_MOVE_VALUE: dict[str, dict[str, str | int]] = {
     "s": {"direction": "y", "move_value": 1},
     "d": {"direction": "x", "move_value": 1}}
 
+PARENT_SAVE_DIRECTORY: str = "saves"
 SAVE_SLOT_DIRECTORY_PREFIX: str = "saves/save_slot"
 # E.g. saves/save_slot_1 (to be used by get_save_slot_dir)
 
@@ -1508,6 +1509,15 @@ def town_menu(current_map_in: list[list[str]], fog_in: list[list[str]],
 # --------------------------- Miscellaneous ---------------------------
 def create_save_folders() -> None:
     """Creates save slot folders. Ensures they exist in working directory."""
+
+    try:
+        os.mkdir(PARENT_SAVE_DIRECTORY)
+    except FileExistsError:
+        pass
+    except PermissionError:
+        assert False, f"Permission denied: Unable to create '{PARENT_SAVE_DIRECTORY}'. Please check."
+    except Exception as exp:
+        assert False, f"An error occurred while attempting creating {PARENT_SAVE_DIRECTORY}: {exp}\nPlease check."
 
     for i in range(1, SAVE_SLOT_QUANTITY+1):
         full_dir_path: str = get_save_slot_dir(number=i)
