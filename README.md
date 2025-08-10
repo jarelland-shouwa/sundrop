@@ -14,4 +14,8 @@ Bonus features:
 - Multiple save slots, with ability to override
 existing written save slots
 - Ore regeneration when a day passes, with a fixed chance per ore
-- Torch upgrade from level 1 to 3, expanding your viewport area of fog of war cleared.
+- Torch upgrade from level 1 to 3, expanding your viewport
+area of fog of war cleared.
+- Code follows PEP8 Style Guide, formatted
+using *autopep8* extension by Microsoft on VSC
+(https://marketplace.visualstudio.com/items?itemName=ms-python.autopep8)

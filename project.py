@@ -1,6 +1,8 @@
 '''
-Name: TODO
-Class:
+PRG 1 Assignment
+
+Name: Song Jun Hao Jarell
+Class: P16
 Start date: 21 July 2025
 End date: 10 August 2025
 
@@ -1116,26 +1118,6 @@ def sell_ores(player_in: dict[str, str | int]) -> bool:
                   current_map_in=current_map, fog_in=fog, player_in=player_in)
 
         if not name_in_high_score_records(player_in["name"]):
-            # Uncomment for TESTING of correct insertion
-            # of record into high score records.
-            # Test when attempting to load a save slot that has
-            # won the game
-
-            # name = input("name: ")
-            # while True:
-            #     try:
-            #         day = int(input("day:"))
-            #         steps = int(input("steps: "))
-            #         total_gp = int(input("total gp: "))
-            #         break
-            #     except ValueError:
-            #         print("try again")
-            # Sample records:
-            # [['A', 1, 2, 0], ['D', 3, 2, 2], ['C', 2, 1, 0],
-            # ['E', 3, 2, 1], ['B', 2, 1, 2], ['E', 3, 2, 1]]
-            # pseudo_player = {"name": name, "day": day, "steps": steps, "total_GP": total_gp}
-            # insert_player_data(pseudo_player)
-
             insert_player_data(player_in=player_in)
         archive_data()
         return True
