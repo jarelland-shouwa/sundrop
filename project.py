@@ -120,7 +120,8 @@ def colour_ore(text: str) -> str:
     Parameters
     ----------
     text : str
-        string that could be of the full name or the first character
+        string that could be of the full name (does not
+        have to be in lower case) or the first character
         of ore
 
     Returns
@@ -131,8 +132,8 @@ def colour_ore(text: str) -> str:
 
     if text in mineral_names:
         return colourirse_str(text, ORE_COLOUR[mineral_names[text]])
-    if text in minerals:
-        return colourirse_str(text, ORE_COLOUR[text])
+    if text.lower() in minerals:
+        return colourirse_str(text, ORE_COLOUR[text.lower()])
     return text
 
 
@@ -516,11 +517,11 @@ def draw_map(fog_in: list[list[str]],
         for j in range(MAP_WIDTH):
             add_player: bool = False
             if used_portal_to_town or walked_to_town:
-                add_player = (i,j) == TOWN_POSITION
+                add_player = (i, j) == TOWN_POSITION
             else: # Not in town
-                add_player = (i,j) == (player_in["y"], player_in["x"])
+                add_player = (i, j) == (player_in["y"], player_in["x"])
 
-            add_portal: bool = (i,j) == player_position and used_portal_to_town
+            add_portal: bool = (i, j) == player_position and used_portal_to_town
 
             if add_player:
                 row_text += PLAYER_CHAR
@@ -579,7 +580,7 @@ def draw_view(current_map_in: list[list[str]],
                     mine_row += colour_ore(current_map_in[row_n][col_n])
             elif is_within(height=MAP_HEIGHT+1, width=MAP_WIDTH+1,
                         x=col_n, y=row_n, lower_limit=-1): # Draws walls
-                mine_row += WALL_CHAR
+                mine_row += colourirse_str(WALL_CHAR, "black")
             else: # Uncomment this for a fixed area
                 mine_row += " "
         if mine_row != "":
@@ -719,12 +720,12 @@ def show_information(menu_type: str, player_in: dict[str, str | int]) -> None:
     else:
         print(f"Current position: {(player_in["x"], player_in["y"])}")
 
-    print(f"Pickaxe level: {player_in['pickaxe_level']} "
+    print(f"Pickaxe level: {colourirse_str(player_in['pickaxe_level'], "purple")} "
           f"({colour_ore(minerals[player_in['pickaxe_level']-1])})")
-    print(f"Torch level: {player_in["torch_level"]}")
+    print(f"Torch level: {colourirse_str(player_in["torch_level"], "purple")}")
     if menu_type == "mine":
         for mineral in reversed(minerals):
-            print(f"{mineral.capitalize()}: {player_in[mineral]}")
+            print(f"{colour_ore(mineral.capitalize())}: {player_in[mineral]}")
 
     print("------------------------------")
     print(f"Load: {sum_ores_in_backpack(player_in=player_in)} / {player_in["capacity"]}")
@@ -787,15 +788,17 @@ def show_shop_menu(show_pickaxes: bool,
     print("\n----------------------- Shop Menu -------------------------")
     if show_pickaxes:
         pickaxe_price: int = pickaxe_prices[player_in["pickaxe_level"]-1]
-        print(f"(P)ickaxe upgrade to Level {player_in['pickaxe_level']+1} "
-              f"to mine {colour_ore(minerals[player_in['pickaxe_level']])} ore for {colourirse_str(pickaxe_price, "cyan")} GP")
+        print(f"(P)ickaxe upgrade to Level {colourirse_str(player_in['pickaxe_level']+1, "purple")}"
+              f" to mine {colour_ore(minerals[player_in['pickaxe_level']])} "
+              f"ore for {colourirse_str(pickaxe_price, "cyan")} GP")
 
     if show_torch:
         torch_price: int = player_in["torch_level"] * TORCH_UPGRADE_MULTIPLIER
-        print(f"(T)orch upgrade to Level {player_in['torch_level']+1} for {colourirse_str(torch_price, "cyan")} GP")
+        print(f"(T)orch upgrade to Level {colourirse_str(player_in['torch_level']+1, "purple")} "
+              f"for {colourirse_str(torch_price, "cyan")} GP")
 
     backpack_upgrade_price: int = player_in["capacity"] * BACKPACK_UPGRADE_CONSTANT
-    print(f"(B)ackpack upgrade to carry {player_in["capacity"]+BACKPACK_UPGRADE_CONSTANT} items "
+    print(f"(B)ackpack upgrade to carry {colourirse_str(player_in["capacity"]+BACKPACK_UPGRADE_CONSTANT, "purple")} items "
           f"for {colourirse_str(backpack_upgrade_price, "cyan")} GP")
     print("(L)eave shop")
     print("-----------------------------------------------------------")
@@ -817,9 +820,6 @@ def show_mine_menu(player_in: dict[str, str | int],
         input for GLOBAL game map (originally named game_map)
     """
 
-    # print("---------------------------------------------------")
-    # print(f"{f"DAY {player_in['day']}":^50}")
-    # print("---------------------------------------------------")
     draw_view(current_map_in=current_map_in, player_in=player_in, fog_in=fog_in)
     print(f"Turns left: {player_in['turns']} {" "*4} Load: "
           f"{sum_ores_in_backpack(player_in=player_in)} / {player_in["capacity"]} "
@@ -841,8 +841,8 @@ def show_game_won(player_in: dict[str, str | int]) -> None:
     print(f"Woo-hoo! Well done, {player_in["name"]}, you have "
           f"{colourirse_str(player_in["GP"], "cyan")} GP!")
     print("You now have enough to retire and play video games every day.")
-    print(f"And it only took you {player_in["day"]} day(s) and "
-          f"{player_in["steps"]} steps! You win!")
+    print(f"And it only took you {colourirse_str(player_in["day"], "purple")} day(s) and "
+          f"{colourirse_str(player_in["steps"], "green")} steps! You win!")
     print("-------------------------------------------------------------")
 
 
@@ -1085,8 +1085,8 @@ def is_ore_minable(ore_found_input: str, player_in: dict[str, str | int]) -> boo
     if ore_found_input in player_in["valid_minable_ores"]:
         # print("You can mine this!")
         return True
-    print(f"Your pickaxe level ({player_in['pickaxe_level']}) is "
-        f"too low, so you cannot mine {mineral_names[ore_found_input]}.")
+    print(f"Your pickaxe level ({colourirse_str(player_in['pickaxe_level'], "purple")}) is "
+        f"too low, so you cannot mine {colour_ore(mineral_names[ore_found_input])}.")
     return False
 
 # ✅✅✅ (SHOULD BE DONE)
@@ -1172,10 +1172,10 @@ def process_ore_into_backpack(ore_found_input: str, player_in: dict[str, str | i
     pieces_found: int = randint(pieces_per_node[mineral_name][0], pieces_per_node[mineral_name][1])
 
     if pieces_found <= remaining_space_in_backpack:
-        print(f"You mined {pieces_found} piece(s) of {mineral_name}.")
+        print(f"You mined {pieces_found} piece(s) of {colour_ore(mineral_name)}.")
         player_in[mineral_names[ore_found_input]] += pieces_found
     else:
-        print(f"You mined {pieces_found} piece(s) of {mineral_name}.")
+        print(f"You mined {pieces_found} piece(s) of {colour_ore(mineral_name)}.")
         print(f"...but you can only carry {remaining_space_in_backpack} more piece(s)!")
         player_in[mineral_names[ore_found_input]] += remaining_space_in_backpack
 
