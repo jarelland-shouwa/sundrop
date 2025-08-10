@@ -18,6 +18,7 @@ def test_create_regex():
 
 def test_is_within():
     assert is_within(height=20, width=20, x=2, y=0) is True
+    assert is_within(height=10, width=10, x=10, y=0) is False
 
 
 def test_are_equal():
@@ -31,15 +32,29 @@ def test_sq_increment_range():
 
     with pytest.raises(ValueError) as excinfo:
         sq_increment_range(0)
-    assert str(excinfo.value) == "torch_level_in must be an int x, 1 <= x <= TORCH_LEVEL_LIMIT"
+    assert str(
+        excinfo.value) == "torch_level_in must be an int x, 1 <= x <= TORCH_LEVEL_LIMIT"
 
 
 def test_get_pos_in_square():
     test_cases = {1: {"x": 0, "y": 0, "list_height": 20, "list_width": 10,
-            "torch_level": 1, "expected": [{'x': 0, 'y': 0},
-                                           {'x': 1, 'y': 0},
-                                           {'x': 0, 'y': 1},
-                                           {'x': 1, 'y': 1}]}}
+                      "torch_level": 1, "expected": [{'x': 0, 'y': 0},
+                                                     {'x': 1, 'y': 0},
+                                                     {'x': 0, 'y': 1},
+                                                     {'x': 1, 'y': 1}]
+                      },
+                  2: {"x": 4, "y": 5, "list_height": 10, "list_width": 10,
+                      "torch_level": 1, "expected": [{'x': 3, 'y': 4},
+                                                     {'x': 4, 'y': 4},
+                                                     {'x': 5, 'y': 4},
+                                                     {'x': 3, 'y': 5},
+                                                     {'x': 4, 'y': 5},
+                                                     {'x': 5, 'y': 5},
+                                                     {'x': 3, 'y': 6},
+                                                     {'x': 4, 'y': 6},
+                                                     {'x': 5, 'y': 6}]
+                      }
+                  }
 
     for case in test_cases.values():
         assert get_pos_in_square(case["x"], case["y"],
@@ -55,7 +70,7 @@ def test_get_full_directory():
 
 
 def test_get_file_name():
-    pass
+    assert (get_file_name(1, "player")) == "save_1_player.txt"
 
 
 def test_get_save_slot_dir():

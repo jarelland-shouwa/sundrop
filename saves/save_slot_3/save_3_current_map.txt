@@ -1,10 +1,10 @@
 T   CCCCC       SS     GGG    
      CCCCC     SSSS      GGG  
-    CCCC      SSSS      GGG   
+    C CC      SSSS      GGG   
              SSSSS  CCC       
-      CC       S     CCCC     
-CCCCCCCCC           CCCCC     
-CCCCCCCC       G   CCCC       
-  CCCCC      GG           SS  
-   CCCCC      GGG       SSSSSS
+       C       S     CCCC     
+CCCCC CCC           CCCCC     
+CCCC   C       G   CCCC       
+  CCCC       GG           SS  
+     C C      GGG       SSSSSS
       CCC      GGG      SSSGGG
