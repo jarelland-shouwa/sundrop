@@ -39,6 +39,7 @@ current_save_slot: int = 1
 
 game_state: str = "main" # can be "main", "exit", "town", "mine"
 high_score_records: list = []
+existing_player_names: dict[int, str] = {}
 
 SAVE_SLOT_QUANTITY: int = 5
 
@@ -180,16 +181,19 @@ def validate_input(message: str, regex: str, is_single: bool) -> str:
         has_invalid_spaces: bool = user_input.startswith(" ") or user_input.endswith(" ")
         has_new_lines: bool = user_input.find("\n") != -1
         has_invalid_whitespaces: bool = has_invalid_spaces or has_new_lines or has_tabs
-        duplicate_name: bool = name_in_high_score_records(user_input)
+        duplicate_name: bool = (name_in_high_score_records(user_input)
+                                or user_input in existing_player_names.values())
 
-        if re.match(regex, user_input) and not has_invalid_whitespaces and not duplicate_name:
+        is_valid_name: bool = (bool(re.match(regex, user_input)) and
+                               not (has_invalid_whitespaces or duplicate_name))
+        if is_valid_name:
             return user_input
 
         if user_input == "":
             print("Please enter a valid input instead of nothing.")
         elif has_invalid_whitespaces:
             print("Please enter a valid input that doesn't contain unnecessary/invalid whitespace.")
-        elif duplicate_name:
+        elif not (is_valid_name or is_single):
             print("That name has already been taken. Please enter another name.")
         else:
             print(f"{user_input} is invalid. Please enter a valid input.")
@@ -450,7 +454,14 @@ def initialize_game(current_map_in: list[list[str]],
     global current_save_slot
 
     current_save_slot = choose_new_save_slot()
+
+    # Get name
+    try:
+        existing_player_names.pop(current_save_slot)
+    except KeyError:
+        pass
     name: str = validate_input("Greetings, miner! What is your name? ", r"^[^\n\t]+$", False)
+    existing_player_names[current_save_slot] = name
 
     # initialise current map
     current_map_in.clear()
@@ -798,7 +809,8 @@ def show_shop_menu(show_pickaxes: bool,
               f"for {colourirse_str(torch_price, "cyan")} GP")
 
     backpack_upgrade_price: int = player_in["capacity"] * BACKPACK_UPGRADE_CONSTANT
-    print(f"(B)ackpack upgrade to carry {colourirse_str(player_in["capacity"]+BACKPACK_UPGRADE_CONSTANT, "purple")} items "
+    print(f"(B)ackpack upgrade to carry "
+          f"{colourirse_str(player_in["capacity"] + BACKPACK_UPGRADE_CONSTANT, "purple")} items "
           f"for {colourirse_str(backpack_upgrade_price, "cyan")} GP")
     print("(L)eave shop")
     print("-----------------------------------------------------------")
@@ -1473,6 +1485,25 @@ def load_high_scores() -> None:
                                        "steps": int(data[i][1]), "total_GP": int(data[i][2])})
 
 
+def load_names_from_save_slots():
+    """Load names from existing save slots
+    """
+
+    existing_player_names.clear()
+    for i in range(1, SAVE_SLOT_QUANTITY+1):
+        try:
+            with open(get_full_directory(i, "player"), "r", encoding="utf-8") as f:
+                data: list[str] = f.read().split("\n")
+
+            for datum in data:
+                split_datum: list[str] = datum.split(",", 1)
+                key, value = split_datum[0], split_datum[1]
+                if key == "name":
+                    existing_player_names[i] = value
+        except FileNotFoundError:
+            pass
+
+
 #--------------------------- MAIN GAME ---------------------------
 def main():
     """Main game
@@ -1493,6 +1524,7 @@ def main():
     create_save_folders()
     load_map(filename=LEVEL_MAP, map_struct=level_map)
     load_high_scores()
+    load_names_from_save_slots()
 
     # game_state: str = 'main'
     print("---------------- Welcome to Sundrop Caves! ----------------")
