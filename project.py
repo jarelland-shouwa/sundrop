@@ -79,23 +79,23 @@ DAY_WIDTH: int = 5
 STEP_WIDTH: int = 6
 TOTAL_GP_WIDTH: int = 17
 
-COLOUR_CODES: dict[int] = {"red": 91, "green": 92, "yellow":93,
+COLOUR_CODES: dict[str, int] = {"red": 91, "green": 92, "yellow":93,
              "lightpurple": 94, "purple": 95,
              "cyan": 96, "lightgrey": 97, "black": 90}
 
-ORE_COLOUR: dict[str] = {"copper": "red", "silver": "lightgrey", "gold": "yellow"}
+ORE_COLOUR: dict[str, str] = {"copper": "red", "silver": "lightgrey", "gold": "yellow"}
 
 # ------------------------- GENERAL Functions -------------------------
 
 
-def colourirse_str(text: str, colour: str) -> str:
+def colourirse_str(text: str | int | float, colour: str) -> str:
     """Uses ANSI escape codes to render text with colour
     in terminal.
 
     Parameters
     ----------
-    text : str
-        the string to render in colour
+    text : str | int | float
+        the text or numnbers to render in colour
     colour : str
         colour to render text in
 
@@ -341,8 +341,9 @@ def find_written_slots(mode: str) -> list[int]:
 
             if files_needed.issubset(set(files_in_dir)):
                 written_slots.append(i)
-                save_slot_listing_text += colourirse_str(f"Slot {i}: HAS BEEN WRITTEN TO\n",
-                                                         written_colour)
+                save_slot_listing_text += colourirse_str(f"Slot {i}: HAS BEEN WRITTEN TO; "
+                                                         f"Player: {existing_player_names[i]}\n"
+                                                         , written_colour)
             elif 0 < len(files_in_dir) < len(FILES_TO_SAVE) and mode == "load":
                 save_slot_listing_text += colourirse_str((f"Slot {i}: Incorrect number of"
                                                           f" files present. Check files again.\n"),
@@ -352,7 +353,7 @@ def find_written_slots(mode: str) -> list[int]:
                                                           f"Could be filename or "
                                                           f"type of file issue.\n"), empty_colour)
             else:
-                save_slot_listing_text += colourirse_str(f"Slot {i}: EMPTY ; "
+                save_slot_listing_text += colourirse_str(f"Slot {i}: EMPTY; "
                                                          f"No files in save folder\n", empty_colour)
 
     # Lists whether a save slot is empty or has data already written to it.
@@ -572,7 +573,7 @@ def draw_view(current_map_in: list[list[str]],
     # Ensures that if torch is upgraded, viewport is affected too
     clear_fog(fog_in=fog_in, player_in=player_in)
 
-    mine_rows: list[list[str]] = []
+    mine_rows: list[str] = []
 
     for i in sq_range:
         row_n: int = y + i
@@ -732,7 +733,7 @@ def show_information(menu_type: str, player_in: dict[str, str | int]) -> None:
         print(f"Current position: {(player_in["x"], player_in["y"])}")
 
     print(f"Pickaxe level: {colourirse_str(player_in['pickaxe_level'], "purple")} "
-          f"({colour_ore(minerals[player_in['pickaxe_level']-1])})")
+          f"({colour_ore(minerals[player_in['pickaxe_level'] - 1])})")
     print(f"Torch level: {colourirse_str(player_in["torch_level"], "purple")}")
     if menu_type == "mine":
         for mineral in reversed(minerals):
@@ -1479,13 +1480,14 @@ def load_high_scores() -> None:
         info: str = f.read().strip()
     if info != "":
         data = info.split("\n")
-        for i in range(len(data)):
-            data[i] = data[i].split(",", 3)
-            high_score_records.append({"name": data[i][3], "day": int(data[i][0]),
-                                       "steps": int(data[i][1]), "total_GP": int(data[i][2])})
+        for _, datum in enumerate(data):
+            split_datum = datum.split(",", 3)
+            high_score_records.append({"name": split_datum[3], "day": int(split_datum[0]),
+                                       "steps": int(split_datum[1]),
+                                       "total_GP": int(split_datum[2])})
 
 
-def load_names_from_save_slots():
+def load_names_from_save_slots() -> None:
     """Load names from existing save slots
     """
 
@@ -1505,7 +1507,7 @@ def load_names_from_save_slots():
 
 
 #--------------------------- MAIN GAME ---------------------------
-def main():
+def main() -> None:
     """Main game
 
     Raises
